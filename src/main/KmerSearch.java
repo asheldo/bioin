@@ -1,4 +1,5 @@
 package main;
+
 import java.util.*;
 
 public abstract class KmerSearch {

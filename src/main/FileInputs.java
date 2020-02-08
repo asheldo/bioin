@@ -57,5 +57,45 @@ public class FileInputs extends Processor {
         input.close();
         return m;
     }
+    
+    public static FileInputs scanFileSingleInput() throws Exception {
+
+        FileInputs m = new FileInputs();
+
+        BufferedReader input = new BufferedReader(
+            new InputStreamReader(System.in));
+        String filePath =
+            new StringBuilder("/storage/emulated/0/AppProjects/")
+            .append("%s").append("/src/main/assets/")
+            .append("%s").toString();
+        final String p = "bioin";
+        System.out.print("Project with asset:");
+        System.out.println(Sf("(default: %s)", p));
+        String proj = input.readLine().trim();
+        final String f = "String.txt";
+        System.out.print("Filename of single text asset:");
+        System.out.println(Sf("(default: %s)", f));
+        final String file = input.readLine().trim();
+        LinkedList<String> options = new LinkedList<>();
+        System.out.print("Comma-separated options:");
+        System.out.println(Sf("(default: %s)", options));
+        final String opts = input.readLine().trim();
+        for (String opt : opts.split(",")) { 
+            m.options.add(opt);
+            System.out.println(opt);
+        }
+
+        filePath = Sf(filePath, 
+                      proj.isEmpty() ? p : proj, 
+                      file.isEmpty() ? f : file);
+        List<String> data
+            = TextFileUtil.readTextAndK(filePath);
+        m.sourceText0 = data.get(0);
+        // m.param1 = data.get(1);
+
+        m.outputFile = filePath + ".out";
+        input.close();
+        return m;
+    }
 }
 	

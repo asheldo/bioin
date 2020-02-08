@@ -27,6 +27,13 @@ public class TextFileUtil {
 		return contentBuilder;
 	}
 	
+    static void writeLists(
+        List ... outs) throws Exception
+	{
+        
+        
+    }
+    
 	static void writeKmersListPlus(final String filePath,
 	    Object ... outs) throws Exception
 	{

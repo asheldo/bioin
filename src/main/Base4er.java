@@ -70,7 +70,22 @@ public class Base4er {
                 throw new RuntimeException("problem: " + d);
         }
     }
-    
+
+  static char complement(char d) {
+        switch (d) {
+            case 'T':
+                return 'A';
+            case 'G':
+                return 'C';
+            case 'C':
+                return 'G';
+            case 'A':
+                return 'T';
+            default:
+                throw new RuntimeException("problem: " + d);
+        }
+    }
+      
     public static String reverse(final int n, final FastKmerSearchData d)
     {
         int remain = n;
@@ -79,6 +94,27 @@ public class Base4er {
             int place = remain / pow4s[i];
             remain -= place * pow4s[i];
             kmer += mapInt(place);
+        }
+        return kmer;
+    }
+    
+    public static void main(String [] args) throws Exception {
+        System.out.println("String:");
+        FileInputs ins = FileInputs.scanFileSingleInput();
+        
+        String str = ins.sourceText0;
+        
+        String reverse = reverseComplement(str);
+        System.out.println(reverse);
+    
+    }
+    
+    public static String reverseComplement(String s)
+    {
+        String kmer = "";
+        for (int i = s.length() -1; i >= 0; i--) {
+            char place = s.charAt(i);
+            kmer += complement(place);
         }
         return kmer;
     }
