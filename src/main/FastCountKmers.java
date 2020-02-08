@@ -10,7 +10,7 @@ public class FastCountKmers extends Processor
 {
 	
 	public static void main(String[] args) throws Exception {
-		FileInputs m = scanFileInputs();
+		FileInputs m = FileInputs.scanFileInputs();
 		print("inputs: %s \n", m);
 		FastKmerSearchData d = new FastKmerSearchData(m.sourceText0, m.param1);
         KmerSearch search = KmerSearch.KmerSearchFactory.create(m.options);

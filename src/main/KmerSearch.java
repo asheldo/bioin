@@ -70,6 +70,7 @@ public abstract class KmerSearch {
         }
     }
     
+    // Fast?:
     static class KmerBase4Search extends KmerSearch {
 
         @Override
@@ -88,19 +89,24 @@ public abstract class KmerSearch {
             }
             int count = 0;
             d.counts[ix] = ++count;
-            final String kmer = d.text.substring(ix, d.k + ix);
+            final int n = d.base4kmers[ix];
+            
+            // final String kmer = d.text.substring(ix, d.k + ix);
             for (int i = ix + 1; i + d.k <= d.len; ++i) {
                 if (d.counts[i] == null) {
-                    String imer = d.text.substring(i, d.k + i);
-                    if (kmer.equals(imer)) {
+                    // String imer = d.text.substring(i, d.k + i);
+                    if (n == d.base4kmers[i]) { // (kmer.equals(imer)) {
                         d.counts[i] = ++count;
                     }
                 }
             }
-            d.countKmers.put(kmer, count);
+            if (count > 1) {
+                String kmer = Base4er.reverse(n, d);
+                d.countKmers.put(kmer, count);
+            }
             return count;
         } 
-
+        
         /** find all k-mers' positions */
         @Override
         public List<Integer> findKmerPositions(final FastKmerSearchData d) {

@@ -9,7 +9,7 @@ public class CountKmers extends Processor
 {
 	
 	public static void main(String[] args) throws Exception {
-		FileInputs m = scanFileInputs();
+		FileInputs m = FileInputs.scanFileInputs();
 		print("inputs: %s \n", m);
 		KmerSearchData d = new KmerSearchData(m.sourceText0, m.param1);
 		process(d);

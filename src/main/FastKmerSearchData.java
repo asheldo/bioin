@@ -24,49 +24,4 @@ public class FastKmerSearchData
     }
     
 
-    static class Base4er {
-        // i.e. 2^32 is 4^16
-        static final int pow4s [ ] = pow(4, 15);
-
-        static int [] pow(int base, int n)  {
-            int [] pows = new int [n];
-            pows[0] = 1;
-            for (int i = 1; i < n; i++) {
-                pows[i] = pows[i-1] * base;
-            }
-            return pows;
-        }
-
-        static int mapChar(char c) {
-            switch (c) {
-                case 'A':
-                    return 0;
-                case 'C':
-                    return 1;
-                case 'G':
-                    return 2;
-                case 'T':
-                    return 3;
-                default:
-                    throw new RuntimeException("problem");
-            }
-        }
-
-        static int [] calc(FastKmerSearchData d)  {
-            int n = d.counts.length;
-            int [] base4s = new int [n];
-
-            for (int i = 0; i < n; i++) {
-                base4s[i] = mapChar(d.text.charAt(i));
-            }
-            for (int i=0; i < n; i++) {
-                int base4kmer = 0;
-                for (int j=0; j < d.k; ++j) {
-                    base4kmer += pow4s[d.k-j-1] * base4s[i];
-                }
-                base4s[i] = base4kmer;
-            }
-            return base4s;
-        }
-    }
 }
