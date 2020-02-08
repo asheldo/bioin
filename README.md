@@ -1,2 +1,3 @@
-# bioin
-Bioinformatic
+Interesting, will try the base-4. My default approach for FrequentWords, given an initial OO framework for the CountPattern problem set, was to rely on hopefully a lot of high-count k-mers in the Text, to reduce passes. And so rather than a map of kmers, just build an Integer array of size |Text|-k+1 which gets filled spottily, "left-to-right", with incrementing/cumulative k-mer (i.e. that repeats at index) Count, with repeated left-to-right passes that become progressively shorter, as also the blanks in the array get fewer. You leave the actual Count for a k-mer in its rightmost "position" in the array.
+
+And these Texts have perhaps an avg of 4 reps per k-mer, and the shrinking passes start on avg at halfway point. So you reduce by ~8x the word comparisons from the BigO. Ok for smaller genome...
