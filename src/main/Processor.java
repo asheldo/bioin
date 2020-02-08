@@ -25,6 +25,8 @@ public class Processor {
 		String sourceText0;
 
 		String param1;
+        
+        Set<String> options = new HashSet<>();
 
 		String outputFile;
 
@@ -51,15 +53,24 @@ public class Processor {
 		final String f = "Vibrio_cholerae.txt";
 		System.out.print("Filename of text and k asset:");
 		System.out.println(Sf("(default: %s)", f));
-
 		final String file = input.readLine().trim();
-		filePath = Sf(filePath, 
+        LinkedList<String> options = new LinkedList<>();
+		System.out.print("Comma-separated options:");
+        System.out.println(Sf("(default: %s)", options));
+        final String opts = input.readLine().trim();
+        for (String opt : opts.split(",")) { 
+            m.options.add(opt);
+            System.out.println(opt);
+        }
+        
+        filePath = Sf(filePath, 
 					  proj.isEmpty() ? p : proj, 
 					  file.isEmpty() ? f : file);
 		List<String> data
 		    = TextFileUtil.readTextAndK(filePath);
 		m.sourceText0 = data.get(0);
 		m.param1 = data.get(1);
+        
 		m.outputFile = filePath + ".out";
 		input.close();
 		return m;
