@@ -2,7 +2,7 @@ package main;
 
 import java.util.*;
 
-public abstract class KmerSearch {
+public abstract class KmerSearch extends Processor {
     
     public static class KmerSearchFactory {
         public static KmerSearch create(Set<String> options) {
@@ -26,7 +26,7 @@ public abstract class KmerSearch {
         
         @Override
         public void countTopKmers(FastKmerSearchData d) {
-            for (int ix = 0; d.len >= ix + d.k; ++ix) {
+            for (int ix = 0; d.L >= ix + d.k; ++ix) {
                 int count = countNextKmer(d, ix);
                 // extra info
                 d.maxCount = Math.max(d.maxCount, count);
@@ -76,30 +76,52 @@ public abstract class KmerSearch {
 
         @Override
         public void countTopKmers(final FastKmerSearchData d) {
-            for (int ix = 0; d.len >= ix + d.k; ++ix) {
+            Map<Integer,Object> test = new HashMap<>();
+            for (int ix = 0; d.L >= ix + d.k; ++ix) {
+                
                 int count = countNextKmer(d, ix);
+                
+                if (ix % 100 == 0) {
+                  print(" %d\n", count);
+                }
+                
+                test.put(count, 
+                    Base4er.reverse(d.base4kmers[ix], d));
+                
                 // extra info
                 d.maxCount = Math.max(d.maxCount, count);
             }
+            
+            System.out.println("ct window: %d\n%d\n" +
+                               d.countKmers);
+            
+            System.out.println("top 1st window: %d\n%d\n" +
+             test);
+            
         }
 
         // primary algo:
-        static int countNextKmer(final FastKmerSearchData d, final int ix) {
+        /**
+         * ComputingFrequencies:
+         */
+        static int countNextKmer(final FastKmerSearchData d, 
+                                 final int ix) {
             if (d.counts[ix] != null) {
                 return d.counts[ix];
             }
             int count = 0;
             d.counts[ix] = ++count;
             final int n = d.base4kmers[ix];
-            
-            // final String kmer = d.text.substring(ix, d.k + ix);
             for (int i = ix + 1; i + d.k <= d.len; ++i) {
                 if (d.counts[i] == null) {
-                    // String imer = d.text.substring(i, d.k + i);
-                    if (n == d.base4kmers[i]) { // (kmer.equals(imer)) {
+                   if (n == d.base4kmers[i]) { // (kmer.equals(imer)) {
                         d.counts[i] = ++count;
                     }
                 }
+            }
+            d.clumpCount[n] = count;
+            if (count >= d.clumpThreshold) {
+                d.clumped[n] = 1;
             }
             if (count > 1) {
                 String kmer = Base4er.reverse(n, d);
@@ -127,4 +149,35 @@ public abstract class KmerSearch {
         }
     }
     
+    // CLUMP modified FAST
+    public static class KmerClumpBase4Search extends KmerBase4Search {
+
+        @Override
+        public void countTopKmers(final FastKmerSearchData d) {
+            super.countTopKmers(d);
+        }
+
+        public void shiftRightKmersCount(final FastKmerSearchData d,
+                                         final int start) {
+            try {                              
+            final int decKmerBase4 = d.base4kmers[start - 1];
+            // first record clumped
+            d.clumpCount[decKmerBase4] 
+                = d.clumpCount[decKmerBase4] - 1;
+            // new info
+            final int incKmerBase4 
+                = d.base4kmers[start + d.L - 1];
+            d.clumpCount[incKmerBase4] =
+                d.clumpCount[incKmerBase4] + 1;
+            if (d.clumpCount[incKmerBase4]
+                    >= d.clumpThreshold) {
+                d.clumped[incKmerBase4] = 1;
+            }
+            } catch (RuntimeException e) {
+                System.err.println("Error:" + start + " in " + d.L);
+                // e.printStackTrace(System.err);
+                throw e;
+            }
+        }
+    }
 }

@@ -4,6 +4,7 @@
 
 # analysis
 *.out
+*.txt
 
 # Log file
 *.log

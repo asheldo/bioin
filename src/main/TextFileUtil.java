@@ -16,7 +16,9 @@ public class TextFileUtil {
 			String sCurrentLine;
 			while ((sCurrentLine = br.readLine()) != null) 
 			{
-				contentBuilder.add(sCurrentLine);
+                if (sCurrentLine.trim().length() > 0) {
+                    contentBuilder.add(sCurrentLine);
+                }
 			}
 			br.close();
 		} 
@@ -34,7 +36,7 @@ public class TextFileUtil {
         
     }
     
-	static void writeKmersListPlus(final String filePath,
+	public static void writeKmersListPlus(final String filePath,
 	    Object ... outs) throws Exception
 	{
 		try {

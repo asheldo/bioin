@@ -4,17 +4,30 @@ import java.util.*;
 
 public class Processor {
 	
+    static long t = System.currentTimeMillis();
+    
+    public static long checkpoint() {
+        long t0 = t;
+        t = System.currentTimeMillis();
+        return t - t0;
+    }
+    
 	/** shorthand for String.format */
-	static String Sf(String s, Object ... args) {
+	public static String Sf(String s, Object ... args) {
 		return String.format(s, args);
 	}
 	
-	static void println(String m) {
+	public static void println(String m) {
 		System.out.println(m);
 	}
 	
-	static void print(String m, Object ... args) {
-		System.out.print(Sf(m, args));
+	public static void print(String m, Object ... args) {
+        try {
+          
+		    System.out.print(Sf(m, args));
+        } catch (Exception e) {
+            print("error %s", e);
+        }
 	}
 
 }

@@ -1,7 +1,7 @@
 package main;
 import java.util.*;
 
-public class Base4er {
+public class Base4er extends Processor {
     // i.e. 2^32 is 4^16
     public static final int pow4s [ ] = pow(4, 15);
 
@@ -17,12 +17,16 @@ public class Base4er {
     static int mapChar(char c) {
         switch (c) {
             case 'A':
+                case 'a':
                 return 0;
             case 'C':
+                case 'c':
                 return 1;
             case 'G':
+                case 'g':
                 return 2;
             case 'T':
+                case 't':
                 return 3;
             default:
                 throw new RuntimeException("problem: " + c);
@@ -47,12 +51,16 @@ public class Base4er {
         //
         List<Integer> test = new LinkedList<>();
         List<String> tests = new LinkedList<>();
+        // TODO
         for (int i : base4s) { 
+            if (test.size() >= 10) {
+                break;
+            }
             test.add(i); tests.add(reverse(i, d));
         }
-        System.out.println(test);
-        System.out.println(tests);
-        //
+        print("first 10 base4:\n%s\n%s\n",
+            test, tests);
+        
         return base4s;
     }
     
@@ -74,12 +82,16 @@ public class Base4er {
   static char complement(char d) {
         switch (d) {
             case 'T':
+            case 't':
                 return 'A';
             case 'G':
+                case 'g':
                 return 'C';
             case 'C':
+                case 'c':
                 return 'G';
             case 'A':
+                case 'a':
                 return 'T';
             default:
                 throw new RuntimeException("problem: " + d);
@@ -106,6 +118,7 @@ public class Base4er {
         
         String reverse = reverseComplement(str);
         System.out.println(reverse);
+        TextFileUtil.writeKmersListPlus(ins.outputFile, Collections.singletonList(reverse));
     
     }
     
