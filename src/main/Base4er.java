@@ -14,6 +14,15 @@ public class Base4er extends Processor {
         return pows;
     }
 
+    public static int [] map(String text) {
+        int n = text.length();
+        int [] base4s = new int [n];
+        for (int i = 0; i < n; i++) {
+            base4s[i] = mapChar(text.charAt(i));
+        }
+        return base4s;
+    }
+    
     static int mapChar(char c) {
         switch (c) {
             case 'A':

@@ -14,11 +14,12 @@ public class FastCountKmers extends Processor
 		print("inputs: %s \n", m);
         int k = m.param1 == null ? 9 :
             Integer.parseInt(m.param1.trim());
+            
 		FastKmerSearchData d = new FastKmerSearchData(
             m.sourceText0,
             k, 
             m.sourceText0.length(),
-            1);
+            0);
         KmerSearch search = KmerSearch.KmerSearchFactory.create(m.options);
 		process(d, search);
 		analyzeAndReport(d, search, m.outputFile);

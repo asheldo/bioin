@@ -11,7 +11,7 @@ public class FileInputs extends Processor {
     
     public List<String> params;
 
-    Set<String> options = new HashSet<>();
+    public Set<String> options = new HashSet<>();
 
     public String outputFile;
 
