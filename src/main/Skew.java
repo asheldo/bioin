@@ -2,49 +2,67 @@ package main;
 
 import java.util.*;
 
-public class Skew extends Processor
-{
+public class Skew extends Processor {
     
     public static void main(String [] args) throws Exception {
         System.out.println("String:");
         FileInputs ins = FileInputs.scanFileSingleInput();
-
-        String str = ins.sourceText0;
-        Integer [] skewRun = new Integer [str.length()];
-        
-        List<Integer> min = findMinimalSkew(str, 'G', 'C', skewRun);
-        System.out.println(min);
+        SkewData data = findMinimalSkew(ins, 'G', 'C');
+        System.out.println(data.min);
         TextFileUtil.writeKmersListPlus(ins.outputFile, 
-            min,
-            skewRun.length,
-            Arrays.asList(skewRun)
+            data.min,
+            data.minSkew,
+            data.maxSkew,
+            data.skewRun.length,
+            Arrays.asList(data.skewRun)
             );
-
     }
     
-    static List<Integer> findMinimalSkew(String text, 
-             char base1, char base2, Integer [] skewRun) {
+    static class SkewData {
+        String text;
+        Integer [] skewRun;
+        int [] skewIncr;
+        int part;
         List<Integer> min = new LinkedList<>();
-        int skew = 0;
-        int [] skewIncr = mapSkew(text.toUpperCase(), 
-            base1, base2);
-        int minSkew = 0;
-        int ix = 0;
-        for (int i : skewIncr) {
-            skew += i;
-            skewRun[ix] = skew;
-            if (i <= 0) {
+        int skew, minSkew, maxSkew;        
+        
+        public SkewData(FileInputs ins, char base1, char base2) {
+            text = ins.sourceText0;
+            part = Math.min(1000, text.length());
+            skewRun = new Integer [part];
+            skewIncr = mapSkew(text.toUpperCase(),
+                base1, base2);
+        }
+        
+        void add(int ix) {
+            int incr = skewIncr[ix];
+            skew += incr;
+            if (incr <= 0) {
                 if (skew < minSkew) {
                     minSkew = skew;
                     min.clear();
-                    min.add(ix +1);
+                    min.add(ix + 1);
                 } else if (skew == minSkew) {
-                    min.add(ix +1);
+                    min.add(ix + 1);
                 }
-            }
-            ++ix;
+            } else {
+                maxSkew = Math.max(maxSkew, skew);
+            }                      
+            if (ix < skewRun.length) {
+                skewRun[ix] = skew;
+            }           
         }
-        return min;
+    }
+    
+    static SkewData findMinimalSkew(FileInputs ins, 
+                                    char base1, char base2) 
+    {
+        SkewData data = new SkewData(ins, base1, base2);
+        int len = data.skewIncr.length;
+        for (int ix = 0; ix < len; ++ix) {
+            data.add(ix);
+        }
+        return data;
     }
     
     static int [] mapSkew(String text, char base1, char base2) {
@@ -61,6 +79,4 @@ public class Skew extends Processor
         }
         return skew;
     }
-    
-    
 }
