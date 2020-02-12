@@ -5,7 +5,7 @@ import java.util.*;
 
 public class FileInputs extends Processor {
 
-    public String sourceText0;
+    public String sourceText0 = "";
 
     public String param1;
     
@@ -70,6 +70,10 @@ public class FileInputs extends Processor {
     }
     
     public static FileInputs scanFileSingleInput() throws Exception {
+        return scanFileSingleInput(1);
+    }
+    
+    public static FileInputs scanFileSingleInput(int take) throws Exception {
 
         FileInputs m = new FileInputs();
 
@@ -101,7 +105,16 @@ public class FileInputs extends Processor {
                       file.isEmpty() ? f : file);
         List<String> data
             = TextFileUtil.readTextAndK(filePath);
-        m.sourceText0 = data.get(0);
+        for (int i = 0; i < take; ++i) {
+            if (data.get(i) == null) {
+                continue;
+            }
+            m.sourceText0 += data.get(i);
+            if (i < take) {
+                m.sourceText0 += " ";
+            }
+        }
+        
         // m.param1 = data.get(1);
 
         m.outputFile = filePath + ".out";

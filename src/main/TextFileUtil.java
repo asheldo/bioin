@@ -16,6 +16,7 @@ public class TextFileUtil {
 			String sCurrentLine;
 			while ((sCurrentLine = br.readLine()) != null) 
 			{
+                
                 if (sCurrentLine.trim().length() > 0) {
                     contentBuilder.add(sCurrentLine);
                 }
