@@ -65,7 +65,7 @@ public class Base4er extends Processor {
             if (test.size() >= 10) {
                 break;
             }
-            test.add(i); tests.add(reverse(i, d));
+            test.add(i); tests.add(decode(i, d));
         }
         print("first 10 base4:\n%s\n%s\n",
             test, tests);
@@ -107,7 +107,7 @@ public class Base4er extends Processor {
         }
     }
       
-    public static String reverse(final int n, final FastKmerSearchData d)
+    public static String decode(final int n, final FastKmerSearchData d)
     {
         int remain = n;
         String kmer = "";

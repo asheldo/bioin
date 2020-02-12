@@ -5,20 +5,29 @@ import java.util.*;
 import org.apache.commons.codec.binary.*;
 import java.io.*;
 
-public class FastCountKmers extends Processor {
+public class FastCountHammingKmers extends Processor {
 	
 	public static void main(String[] args) throws Exception {
 		FileInputs m = FileInputs.scanFileInputs();
 		print("inputs: %s \n", m);
-        int k = m.param1 == null ? 9 :
-            Integer.parseInt(m.param1.trim());
-            
+        int k = 9;
+        int hammingD = 2;
+        if (m.param1 != null) {
+            String [] params = 
+                m.param1.trim().split(" ");
+            k = Integer.parseInt(params[0]);
+            if (params.length > 1) {
+                hammingD = Integer.parseInt(params[1]);
+            }
+        }
 		FastKmerSearchData d = new FastKmerSearchData(
             m.sourceText0,
             k, 
             m.sourceText0.length(),
-            0);
-        KmerSearch search = KmerSearch.KmerSearchFactory.create(m.options);
+            0,
+            hammingD);
+        KmerSearch search = KmerSearch.KmerSearchFactory
+            .create(m.options);
 		process(d, search);
 		analyzeAndReport(d, search, m.outputFile);
 	}
@@ -26,6 +35,7 @@ public class FastCountKmers extends Processor {
 	static void process(final FastKmerSearchData d, 
                         final KmerSearch search) { 
 		long start = System.currentTimeMillis();
+        // triggering hamming version
 		search.countTopKmers(d);
 		long end = System.currentTimeMillis();
 		print("t=%d \n", (end-start));

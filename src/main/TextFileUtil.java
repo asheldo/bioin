@@ -43,7 +43,8 @@ public class TextFileUtil {
 		try {
 			FileWriter fw = new FileWriter(filePath);
 			for (Object out : outs) {
-			    fw.write(out.toString());
+			    fw.write(out == null 
+                    ? "null" : out.toString());
 				fw.write("\n");
 			}
 			fw.flush();

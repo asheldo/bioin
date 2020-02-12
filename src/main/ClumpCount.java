@@ -23,15 +23,15 @@ public class ClumpCount extends Processor
             Integer.parseInt(L),
             Integer.parseInt(t));
         // 1st window freq
-        KmerSearch.KmerClumpBase4Search search = 
-            new KmerSearch.KmerClumpBase4Search();
+        KmerBase4ClumpSearch search = 
+            new KmerBase4ClumpSearch();
 
         process(d, search);
         analyzeAndReport(d, search, m.outputFile);
     }
 
     static void process(final FastKmerSearchData d, 
-                        final KmerSearch.KmerClumpBase4Search search) { 
+                        final KmerBase4ClumpSearch search) { 
         checkpoint();
         search.countTopKmers(d);
         print("t=%d \n", checkpoint());
@@ -49,7 +49,7 @@ public class ClumpCount extends Processor
         List<String> kmers = new LinkedList<>();
         for (int ix = 0; ix < d.clumped.length; ++ix) {
             if (d.clumped[ix] != 0) {
-                String kmer = Base4er.reverse(ix, d);
+                String kmer = Base4er.decode(ix, d);
                 kmers.add(kmer);
             }
         }

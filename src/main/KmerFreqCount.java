@@ -18,15 +18,15 @@ public class KmerFreqCount extends Processor
             text.length(),
             1);
         // 1st window freq
-        KmerSearch.KmerClumpBase4Search search = 
-            new KmerSearch.KmerClumpBase4Search();
+        KmerBase4ClumpSearch search = 
+            new KmerBase4ClumpSearch();
 
         process(d, search);
         analyzeAndReport(d, search, m.outputFile);
     }
 
     static void process(final FastKmerSearchData d, 
-                        final KmerSearch.KmerClumpBase4Search search) { 
+                        final KmerBase4ClumpSearch search) { 
         checkpoint();
         search.countTopKmers(d);
         print("t=%d \n", checkpoint());
