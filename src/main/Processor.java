@@ -17,6 +17,10 @@ public class Processor {
 		return String.format(s, args);
 	}
 	
+    static List list(Object [] o) {
+        return Arrays.asList(o);
+    }
+    
 	public static void println(String m) {
 		System.out.println(m);
 	}

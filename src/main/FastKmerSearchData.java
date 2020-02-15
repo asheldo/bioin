@@ -50,6 +50,7 @@ public class FastKmerSearchData extends Processor
         println("t calc: " + checkpoint());
         
         this.counts = new Integer [len - k + 1];
+        
         int kmax = (int) Math.pow(4, k);
         this.clumped = new byte [kmax];
         this.clumpCount = new int [kmax];

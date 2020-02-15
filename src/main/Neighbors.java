@@ -21,7 +21,7 @@ public class Neighbors extends Processor
             m.sourceText0,
             k, 
             m.sourceText0.length(),
-            0,
+            1,
             hammingD);
         KmerSearch search = KmerSearch.KmerSearchFactory
             .create(m.options);
@@ -35,12 +35,16 @@ public class Neighbors extends Processor
         Neighbors nbrs = new Neighbors(d);
         for (int ix = 0; ix <= d.len - d.k; ++ix) {
             int kmer = d.base4kmers[ix];
+            //
+            // print("test: %s \n", nbrs.test(kmer));
+            // if (kmer >= 0)
+            //    continue; 
             // todo: keep these in window!
-            Integer [] neighbors = nbrs.base2Neighbors(kmer);
-            print("nbrs: %s %s", kmer, Arrays.asList(neighbors));
+            Integer [] neighbors 
+                = nbrs.base2Neighbors(kmer);
+            print("nbrs: %s %s \n", kmer, Arrays.asList(neighbors));
             for (int kmerI : neighbors) {
-                d.counts[kmerI] = (d.counts[kmerI] == null) 
-                    ? 1 : 1 + d.counts[kmerI];
+                ++d.clumpCount[kmerI];
             }
         }
         return nbrs;
@@ -63,7 +67,7 @@ public class Neighbors extends Processor
         // 2^4=16
         permuts = (int) Math.pow(o, d.hamming); // 4^2 or 4^1
         permsSize = calcSize();
-        print("permSize pp: %s %s", permsSize,
+        print("permSize pp: %s %s \n", permsSize,
             Arrays.asList(placePermuts[0]));
         //  int [][] places = new int [d.k][4];
     }
@@ -84,16 +88,28 @@ public class Neighbors extends Processor
         return s;
     }
     
+    Object test(int kmer) {
+        final Integer [] iPlace = placePermuts[0];
+        final Integer [] jPlace = placePermuts[0];
+        int kmerZero = zeroPlaces(
+            zeroPlaces(kmer, iPlace), jPlace);
+            
+        
+        return list(new Integer []
+            { kmer, kmerZero, zeroPlaces(kmer, iPlace)});
+    }
+    
     // todo ... bit math
     Integer [] base2Neighbors(int kmer) {
         final Integer [] kPerms = new Integer [permsSize];
         
         int kIx = 0;
         final int base = Base4er.BASE;
+        // r to l
         for (int i = 0; i < d.k; ++i) {
             final Integer [] iPlace = placePermuts[i]; // e.g. @16:12,8,4,0 
-            // int start = d.hamming == 1 ? i : i + 1;
-            for (int j = i + 1; j <= d.k; ++j) {
+            int start = d.hamming == 1 ? i : i + 1;
+            for (int j = start; j < d.k; ++j) {
                 // time for 2 bit math !?!
                 final Integer [] jPlace = placePermuts[j];
                 int kmerZero = zeroPlaces(
@@ -116,13 +132,13 @@ public class Neighbors extends Processor
     }
     
     int permute(int kmerZero, int kmerIPlace, int kmerJPlace) {
-        return (kmerZero & kmerIPlace) & kmerJPlace;
+        return (kmerZero | kmerIPlace) | kmerJPlace;
     }
     
     // before permute
     int zeroPlaces(int kmer, Integer [] place) {
         for (int i : place) {
-            if (i > 0 && (kmer & i) == kmer) {
+            if (i > 0 && (kmer & i) == i) {
                 return kmer - i;
             } 
         }
@@ -137,8 +153,8 @@ public class Neighbors extends Processor
         // todo Use Clump Count !
         List<String> kmers = new LinkedList<>();
         int n = 0;
-        for (Integer c : d.counts) {
-            if (c != null && c >= d.clumpThreshold) {
+        for (int c : d.clumpCount) {
+            if (c >= d.clumpThreshold) {
                 kmers.add(Base4er.decode(n, d));
             }
             if (++n >= d.len || kmers.size() > 200) {
