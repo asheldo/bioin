@@ -37,7 +37,8 @@ public class TextFileUtil {
         
     }
     
-	public static void writeKmersListPlus(final String filePath,
+	public static void writeKmersListPlus(
+        final String filePath,
 	    Object ... outs) throws Exception
 	{
 		try {

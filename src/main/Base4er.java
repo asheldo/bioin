@@ -2,9 +2,15 @@ package main;
 import java.util.*;
 
 public class Base4er extends Processor {
+    
+    public static final int BASE = 4;
+    
     // i.e. 2^32 is 4^16
-    public static final int pow4s [ ] = pow(4, 15);
-
+    public static final int pow4s [] = pow(BASE, 15);
+    
+    public static final Integer pow4Permutations [][] 
+        = powPerms(pow4s, BASE);
+    
     static int [] pow(int base, int n)  {
         int [] pows = new int [n];
         pows[0] = 1;
@@ -14,6 +20,20 @@ public class Base4er extends Processor {
         return pows;
     }
 
+    // 0 in a place is not wasted space!
+    static Integer [][] powPerms(int [] pows, int base) {
+        Integer powPerms[][] = new Integer [pows.length][base];
+        for (int n = 0, pow = 0; n < pow4s.length; n++) {
+            // implicit 
+            powPerms[n][0] = 0;
+            for (int b = 1; b < base; b++) {
+                pow += pow4s[n];
+                powPerms[n][b] = pow;
+            }
+        }
+        return powPerms;
+    }
+    
     public static int [] map(String text) {
         int n = text.length();
         int [] base4s = new int [n];

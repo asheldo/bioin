@@ -9,6 +9,9 @@ public abstract class KmerSearch extends Processor {
             if (options.contains("textual")) {
                 return new KmerTextualSearch();
             }
+            if (options.contains("hamming")) {
+                return new KmerHammingBase4Search();
+            }
             return new KmerBase4Search();
         }
     }

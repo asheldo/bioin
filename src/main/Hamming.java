@@ -22,6 +22,7 @@ public class Hamming extends Processor
         print("ct=%s\n", positions.size());
         TextFileUtil
             .writeKmersListPlus(ins.outputFile,
+                                Hamming.class,
                                 positions.size(),
                                 positions,
                                 kmerI, 

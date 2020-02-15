@@ -3,7 +3,9 @@ package main;
 import java.util.*;
 
 public class FastKmerSearchData extends Processor
- {
+{
+    public static final int OBJECTS = 4;
+    
     final int len; // text lengrh
     final int k; // kmer length
     final int L; // window length
@@ -12,6 +14,8 @@ public class FastKmerSearchData extends Processor
     final Integer [] counts; // whole genome
     final int [] base4kmers; // base4 k-mer N
     int maxCount;
+    
+    
     
     final int clumpThreshold;
     final byte [] clumped;
@@ -50,6 +54,7 @@ public class FastKmerSearchData extends Processor
         this.clumped = new byte [kmax];
         this.clumpCount = new int [kmax];
         
+        // todo this.base2 = new byte [kmax][];
         println("t(clump)=" + checkpoint());
     }
 }

@@ -5,6 +5,18 @@ import java.util.*;
 
 public class FileInputs extends Processor {
 
+    public enum InputOption {
+        INPUT_FILE("E_coli.txt", 
+                   "Vibrio_cholerae.txt", "datasetx.txt"),
+        SEARCH_METHOD("textual", "hamming");
+
+        public final List<String> suggest;
+
+        InputOption(String ... suggest) {
+            this.suggest = Arrays.asList(suggest);
+        }
+    }
+    
     public String sourceText0 = "";
 
     public String param1;
@@ -18,14 +30,26 @@ public class FileInputs extends Processor {
     @Override
     public String toString() {
         return "param1:" + param1.substring(0, 2);
-     }
+    }
 
-    public static FileInputs scanFileInputs() throws Exception {
-        return scanFileInputs("Vibrio_cholerae.txt");
+    public static Map<InputOption,String> mapIn(String inputFile) {
+        Map<InputOption,String> map = new HashMap<>();
+        map.put(InputOption.INPUT_FILE, inputFile);                                 
+        return map;
     }
     
-    public static FileInputs scanFileInputs(final String f) throws Exception {
-
+    public static FileInputs scanFileInputs() throws Exception {
+        return scanFileInputs(mapIn(
+            InputOption.INPUT_FILE.suggest.get(1)));
+    }
+    
+    public static FileInputs scanFileInputs(final String suggest) throws Exception {
+        return scanFileInputs(mapIn(suggest));
+    }
+    
+    public static FileInputs scanFileInputs(final Map<InputOption,String> inputOptions) throws Exception {
+        String suggest = inputOptions.get(InputOption.INPUT_FILE);
+    
         FileInputs m = new FileInputs();
 
         BufferedReader input = new BufferedReader(
@@ -40,7 +64,7 @@ public class FileInputs extends Processor {
         String proj = input.readLine().trim();
         
         print("Filename of text and k asset:");
-        println(Sf("(default: %s)", f));
+        println(Sf("(default: %s)", suggest));
         final String file = input.readLine().trim();
         LinkedList<String> options = new LinkedList<>();
         print("Comma-separated options:");
@@ -53,7 +77,7 @@ public class FileInputs extends Processor {
 
         filePath = Sf(filePath, 
                       proj.isEmpty() ? p : proj, 
-                      file.isEmpty() ? f : file);
+                      file.isEmpty() ? suggest : file);
                       
         List<String> data
             = TextFileUtil.readTextAndK(filePath);
