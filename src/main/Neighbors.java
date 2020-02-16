@@ -25,9 +25,45 @@ public class Neighbors extends Processor
             hammingD);
         KmerSearch search = KmerSearch.KmerSearchFactory
             .create(m.options);
-        Neighbors nb = process(d, search);
-        nb.analyzeAndReport(d, search, m.outputFile);
+        if (m.options.contains("neighbors")) {
+            println("processFirstKmerNeighborDetail");
+            Neighbors nb = processFirstKmerNeighborDetail(m, d, search);
+        } else {
+            Neighbors nb = process(d, search);
+            nb.analyzeAndReport(d, search, m.outputFile);
+        }
 	}
+    
+    static Neighbors processFirstKmerNeighborDetail(final FileInputs m, 
+                                                    final FastKmerSearchData d,
+                                                    final KmerSearch searchTODO) throws Exception {
+        Neighbors nbrs = new Neighbors(d);
+        // for (
+        int ix = 0; // ix <= d.len - d.k; ++ix)
+        {
+            Integer kmer = d.base4kmers[ix];
+            // print("test: %s \n", nbrs.test(kmer));
+            // Integer [] neighbors = nbrs.nextKmerInclRelatives(kmer);
+            // fix:
+            final Collection<Integer> neighbors
+                = new LinkedHashSet<>(); // Integer [nbrs.permsSize];
+            checkpoint();
+            nbrs.nextKmerPositionInclRelatives(kmer, 0, 0, neighbors);
+            for (int kmerI : neighbors) {
+                ++d.clumpCount[kmerI];
+                // kmers.add(Base4er.decode(kmerI, d));
+            }
+            String [] decoded = Base4er.decode(neighbors, d);
+            print("nbrs: %d %s \n%s \n%s \n", checkpoint(),
+                  kmer, 
+                  Arrays.asList(neighbors),
+                  Arrays.asList(decoded));
+            // List<String> kmers = new LinkedList<>();
+            // String [] s = new String [0];
+            report(d, m.outputFile, decoded); // kmers.toArray(s));
+        }
+        return nbrs;
+    }
     
     static Neighbors process(final FastKmerSearchData d,
                              final KmerSearch searchTODO) {
@@ -35,12 +71,13 @@ public class Neighbors extends Processor
         for (int ix = 0; ix <= d.len - d.k; ++ix) {
             Integer kmer = d.base4kmers[ix];
             // print("test: %s \n", nbrs.test(kmer));
-    
-            // todo: keep these in window!
-            Integer [] neighbors 
-                = nbrs.nextKmerInclRelatives(kmer);
+            // Integer [] neighbors = nbrs.nextKmerInclRelatives(kmer);
+            // fix:
+            final List<Integer> neighbors
+                = new LinkedList<>(); // Integer [nbrs.permsSize];
+            nbrs.nextKmerPositionInclRelatives(kmer, 0, 0, neighbors);
             print("nbrs: %s \n%s \n%s \n", kmer, 
-                Arrays.asList(neighbors),
+                neighbors,
                 Arrays.asList(Base4er.decode(neighbors, d)));
             for (int kmerI : neighbors) {
                 ++d.clumpCount[kmerI];
@@ -100,6 +137,40 @@ public class Neighbors extends Processor
             { kmer, kmerZero, zeroPlaces(kmer, iPlace)});
     }
     
+    // recursive
+    void nextKmerPositionInclRelatives(final int kmer, 
+                                       int depth,
+                                       int kmerZero,
+                                       final Collection<Integer> kPerms) {
+        final int base = Base4er.BASE;
+        // r to l is fine
+        for (int i = depth; i < d.k; ++i) {
+            final Integer [] iPlace = placePermuts[i]; // e.g. @16:12,8,4,0   
+            kmerZero = depth == 0 
+                ? zeroPlaces(kmer, iPlace) : kmerZero;
+            if (i == 0) 
+                print("zero: %s %s %s\n", depth, 
+                Arrays.asList(iPlace),
+                kmerZero, 
+                Base4er.decode(kmerZero, d));
+            for (int b = 0; b < base ; ++b) {
+                // todo check an int array first?
+                int permute = permute(kmerZero, iPlace[b]);
+                // add at ANY depth? not just hamming?
+                kPerms.add(permute);
+                
+                if (depth + 1 < d.hamming) {
+                    // recur
+                    nextKmerPositionInclRelatives(kmer, 
+                        depth + 1,             
+                        permute, 
+                        kPerms);
+                }
+            }
+        }
+    }
+    
+    
     // todo ... bit math
     Integer [] nextKmerInclRelatives(int kmer) {
         final Integer [] kPerms = new Integer [permsSize];
@@ -135,10 +206,14 @@ public class Neighbors extends Processor
         return kPerms;
     }
     
-    int permute(int kmerZero, int kmerIPlace, int kmerJPlace) {
-        return (kmerZero | kmerIPlace) | kmerJPlace;
+    int permute(int kmerZero, int ... kmerPlace) {
+        int perm = kmerZero;
+        for (int p : kmerPlace) {
+            perm |= p;
+        }
+        return perm;
     }
-    
+
     // before permute
     int zeroPlaces(int kmer, Integer [] place) {
         for (int i : place) {
@@ -148,6 +223,7 @@ public class Neighbors extends Processor
         }
         return kmer; // Zero in place
     }
+    
     
     // e.g. 16 kmers in i and j, 2 out of 9 pos
     
@@ -188,6 +264,22 @@ public class Neighbors extends Processor
 
 	}
 
+    static void report(final FastKmerSearchData d,
+                       final String outputFile,
+                       final String [] kmers) throws Exception {
+        Integer [] arrCounts = Arrays.copyOfRange(d.counts,
+                                                  0, Math.max(100, d.counts.length));
+        print("first %d position counts: %s\n", arrCounts.length,
+              Arrays.asList(arrCounts));
+
+        TextFileUtil.writeKmersListPlus(
+            outputFile, // *.out in assets
+            kmers // frequent-est k-length patterns
+            // d.countKmers.get(kmers.get(0)), // frequency
+            );
+
+    }
+    
 }
     /*
     public static class Base2xKHamming extends Processor {

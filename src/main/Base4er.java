@@ -6,27 +6,27 @@ public class Base4er extends Processor {
     public static final int BASE = 4;
     
     // i.e. 2^32 is 4^16
-    public static final int pow4s [] = pow(BASE, 15);
+    public static final Integer pow4s [] = pow(16);
     
     public static final Integer pow4Permutations [][] 
-        = powPerms(pow4s, BASE);
+        = powPerms();
     
-    static int [] pow(int base, int n)  {
-        int [] pows = new int [n];
+    static Integer [] pow(int n)  {
+        Integer [] pows = new Integer [n];
         pows[0] = 1;
         for (int i = 1; i < n; i++) {
-            pows[i] = pows[i-1] * base;
+            pows[i] = pows[i-1] * BASE;
         }
         return pows;
     }
 
     // 0 in a place is not wasted space!
-    static Integer [][] powPerms(int [] pows, int base) {
-        Integer powPerms[][] = new Integer [pows.length][base];
-        for (int n = 0, pow = 0; n < pow4s.length; n++) {
+    static Integer [][] powPerms() {
+        Integer powPerms[][] = new Integer [pow4s.length][BASE];
+        for (int n = 0; n < pow4s.length; n++) {
             // implicit 
             powPerms[n][0] = 0;
-            for (int b = 1; b < base; b++) {
+            for (int b = 1, pow = 0; b < BASE; b++) {
                 pow += pow4s[n];
                 powPerms[n][b] = pow;
             }
@@ -127,11 +127,13 @@ public class Base4er extends Processor {
         }
     }
       
-    public static String [] decode(final Integer [] nn, final FastKmerSearchData d)
+    public static String [] decode(final Collection<Integer> nn, 
+                                   final FastKmerSearchData d)
     {
-        String [] decoded = new String [nn.length];
-        for (int i = 0; i < nn.length; ++i) {
-            decoded[i] = decode(nn[i], d);
+        String [] decoded = new String [nn.size()];
+        int i = 0;
+        for (int n : nn) {
+            decoded[i++] = decode(n, d);
         }
         return decoded;
     }
