@@ -21,7 +21,7 @@ public class Neighbors extends Processor
             m.sourceText0,
             k, 
             m.sourceText0.length(),
-            1,
+            0,
             hammingD);
         KmerSearch search = KmerSearch.KmerSearchFactory
             .create(m.options);
@@ -31,18 +31,17 @@ public class Neighbors extends Processor
     
     static Neighbors process(final FastKmerSearchData d,
                              final KmerSearch searchTODO) {
-        // int [][] kSuff = new int [d.len][];
         Neighbors nbrs = new Neighbors(d);
         for (int ix = 0; ix <= d.len - d.k; ++ix) {
-            int kmer = d.base4kmers[ix];
-            //
+            Integer kmer = d.base4kmers[ix];
             // print("test: %s \n", nbrs.test(kmer));
-            // if (kmer >= 0)
-            //    continue; 
+    
             // todo: keep these in window!
             Integer [] neighbors 
-                = nbrs.base2Neighbors(kmer);
-            print("nbrs: %s %s \n", kmer, Arrays.asList(neighbors));
+                = nbrs.nextKmerInclRelatives(kmer);
+            print("nbrs: %s \n%s \n%s \n", kmer, 
+                Arrays.asList(neighbors),
+                Arrays.asList(Base4er.decode(neighbors, d)));
             for (int kmerI : neighbors) {
                 ++d.clumpCount[kmerI];
             }
@@ -50,7 +49,7 @@ public class Neighbors extends Processor
         return nbrs;
     }
     
-    //
+ 
     final FastKmerSearchData d;
     
     final int permuts;
@@ -67,8 +66,10 @@ public class Neighbors extends Processor
         // 2^4=16
         permuts = (int) Math.pow(o, d.hamming); // 4^2 or 4^1
         permsSize = calcSize();
-        print("permSize pp: %s %s \n", permsSize,
-            Arrays.asList(placePermuts[0]));
+        print("permSize pp: %s %s %s %s \n", permsSize,
+              Arrays.asList(placePermuts[0]),
+              Arrays.asList(placePermuts[1]),
+              Arrays.asList(placePermuts[2]));
         //  int [][] places = new int [d.k][4];
     }
     
@@ -100,7 +101,7 @@ public class Neighbors extends Processor
     }
     
     // todo ... bit math
-    Integer [] base2Neighbors(int kmer) {
+    Integer [] nextKmerInclRelatives(int kmer) {
         final Integer [] kPerms = new Integer [permsSize];
         
         int kIx = 0;
@@ -114,6 +115,9 @@ public class Neighbors extends Processor
                 final Integer [] jPlace = placePermuts[j];
                 int kmerZero = zeroPlaces(
                     zeroPlaces(kmer, iPlace), jPlace);
+                    
+                print("zero: %s %s\n", kmerZero, 
+                    Base4er.decode(kmerZero, d));
                 for (int b = 0; b < base ; ++b) {
                     for (int bb = 0; bb < base ; ++bb) {
                         kPerms[kIx++] 
@@ -147,7 +151,7 @@ public class Neighbors extends Processor
     
     // e.g. 16 kmers in i and j, 2 out of 9 pos
     
-    void analyzeAndReport(final FastKmerSearchData d,
+    static void analyzeAndReport(final FastKmerSearchData d,
                           final KmerSearch searchTODO,
                           final String outputFile) throws Exception {
         // todo Use Clump Count !

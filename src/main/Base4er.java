@@ -127,6 +127,15 @@ public class Base4er extends Processor {
         }
     }
       
+    public static String [] decode(final Integer [] nn, final FastKmerSearchData d)
+    {
+        String [] decoded = new String [nn.length];
+        for (int i = 0; i < nn.length; ++i) {
+            decoded[i] = decode(nn[i], d);
+        }
+        return decoded;
+    }
+    
     public static String decode(final int n, final FastKmerSearchData d)
     {
         int remain = n;
