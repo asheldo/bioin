@@ -4,7 +4,7 @@ import java.util.*;
 
 public class Neighbors extends Processor
 {
-    static boolean debug = true;
+    static boolean debug = false;
     
     public static void main(String[] args) throws Exception {
         FileInputs m = FileInputs.scanFileInputs();
@@ -80,11 +80,13 @@ public class Neighbors extends Processor
                 }
             }
         }
-
+        String list = kmers.toString()
+            .replaceAll("[,\\[\\]]", "");
+        print("kmers max: %s", list);
         TextFileUtil.writeKmersListPlus(
             outputFile, // *.out in assets
             max,
-            kmers, // frequent-est k-length patterns
+            list, // frequent-est k-length patterns
             // d.countKmers.get(kmers.get(0)), // frequency
             kmers.size(),
             counts);
