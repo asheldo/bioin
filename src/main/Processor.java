@@ -12,6 +12,9 @@ public class Processor {
         return t - t0;
     }
     
+    public static String extension(String file, String outExt) {
+        return file.replaceAll("\\.[^.]*$", outExt);
+    }
 	/** shorthand for String.format */
 	public static String Sf(String s, Object ... args) {
 		return String.format(s, args);

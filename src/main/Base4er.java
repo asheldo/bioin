@@ -34,6 +34,26 @@ public class Base4er extends Processor {
         return powPerms;
     }
     
+    // 1 4 16 64 256 1024 4096
+    // 2 8 32 128 512 2048 8192
+    static int [] base2bits(boolean low, int k) {
+        int [] bits = new int [k];
+        bits[0] = low ? 1 : 2;
+        for (int i = 1; i < k; ++i) {
+           bits[i] = bits[i-1] * 4;
+        }
+        return bits;
+    }
+    
+    static int [] base4HighBits(int k) {
+        
+        return base2bits(false, k);
+    }
+    
+    static int [] base4LowBits(int k) {
+        return base2bits(true, k);
+    }
+    
     public static int [] map(String text) {
         int n = text.length();
         int [] base4s = new int [n];
@@ -82,7 +102,7 @@ public class Base4er extends Processor {
         List<String> tests = new LinkedList<>();
         // TODO
         for (int i : base4s) { 
-            if (test.size() >= 10) {
+            if (test.size() >= 10 || test.size() == n - d.k + 1) {
                 break;
             }
             test.add(i); tests.add(decode(i, d));

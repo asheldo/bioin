@@ -4,6 +4,8 @@ import java.util.*;
 
 public class Neighbors extends Processor
 {
+    static boolean debug = true;
+    
     public static void main(String[] args) throws Exception {
         FileInputs m = FileInputs.scanFileInputs();
         print("inputs: %s \n", m);
@@ -25,57 +27,120 @@ public class Neighbors extends Processor
             hammingD);
         KmerSearch search = KmerSearch.KmerSearchFactory
             .create(m.options);
-        if (m.options.contains("neighbors")) {
-            println("processFirstKmerNeighborDetail");
-            Neighbors nb = processFirstKmerNeighborDetail(m, d, search);
+        if (m.options.contains("exact")) {
+            println("processFirstKmerNeighborDetail exact");
+            Neighbors nb = processKmerNeighbors(
+                extension(m.outputFile, "_exact.out"), 
+                d, 1, true);
+        } else if (m.options.contains("neighbors")) {
+            println("processFirstKmerNeighborDetail first");
+            Neighbors nb = processKmerNeighbors(m.outputFile, 
+                d, 1, false);
+        } else if (m.options.contains("all")) {
+            println("processFirstKmerNeighborDetail all");
+            checkpoint();
+            Neighbors nb = processKmerNeighbors(m.outputFile, 
+                d, Integer.MAX_VALUE, false);
+            nb.reportFrequentWordsWithMismatches(d, 
+                m.outputFile);
         } else {
             Neighbors nb = process(d, search);
             nb.analyzeAndReport(d, search, m.outputFile);
         }
 	}
     
-    static Neighbors processFirstKmerNeighborDetail(final FileInputs m, 
-                                                    final FastKmerSearchData d,
-                                                    final KmerSearch searchTODO) throws Exception {
+    static void reportFrequentWordsWithMismatches(FastKmerSearchData d, 
+                                                  String outputFile) throws Exception {
+        print("t(process): %d\n", 
+              checkpoint());
+        int max = 1;
+        Map<Integer,List<String>> counts 
+            = new LinkedHashMap<>();
+        for (int ix = 0; ix < d.clumpCount.length; ++ix) {
+            int ct = d.clumpCount[ix];
+            if (ct > max) {
+                max = ct;
+            }
+        }
+
+        List<String> kmers = new LinkedList<>();
+        for (int ix = 0; ix < d.clumpCount.length; ++ix) {
+            int ct = d.clumpCount[ix];
+            if (ct > Math.min(1, max - 3)) {
+                String kmer = Base4er.decode(ix, d);
+                if (ct == max) {
+                    kmers.add(kmer);
+                }
+                //
+                if (debug) {
+                    if (null == counts.get(ct)) {
+                        counts.put(ct, new LinkedList<String>());
+                    }
+                    counts.get(ct).add(kmer);
+                }
+            }
+        }
+
+        TextFileUtil.writeKmersListPlus(
+            outputFile, // *.out in assets
+            max,
+            kmers, // frequent-est k-length patterns
+            // d.countKmers.get(kmers.get(0)), // frequency
+            kmers.size(),
+            counts);
+    }
+    
+  
+    // Variants of Neighbors factory method
+    
+    // 1
+    static Neighbors processKmerNeighbors(final String outputFile, 
+                                          final FastKmerSearchData d,
+                                          final int limit, // KmerSearch searchTODO,
+                                          final boolean exactDistance) throws Exception {
         Neighbors nbrs = new Neighbors(d);
-        // for (
-        int ix = 0; // ix <= d.len - d.k; ++ix)
-        {
+        for (int ix = 0; ix < limit
+                && ix <= d.len - d.k; ++ix) {
             Integer kmer = d.base4kmers[ix];
-            // print("test: %s \n", nbrs.test(kmer));
+            if (debug) {
+                print("test: %s %s\n", 
+                    Base4er.decode(kmer, d),
+                    nbrs.test(kmer));
+            }
             // Integer [] neighbors = nbrs.nextKmerInclRelatives(kmer);
             // fix:
             final Collection<Integer> neighbors
                 = new LinkedHashSet<>(); // Integer [nbrs.permsSize];
-            checkpoint();
-            nbrs.nextKmerPositionInclRelatives(kmer, 0, 0, neighbors);
+            
+            nbrs.nextKmerRelatives(kmer, 
+                0, 0, neighbors, exactDistance);
             for (int kmerI : neighbors) {
                 ++d.clumpCount[kmerI];
-                // kmers.add(Base4er.decode(kmerI, d));
             }
-            String [] decoded = Base4er.decode(neighbors, d);
-            print("nbrs: %d %s \n%s \n%s \n", checkpoint(),
+            if (debug) {
+                String [] decoded = Base4er.decode(neighbors, d);
+                print("process nbrs: %s \n%s \n%s \n", 
                   kmer, 
                   Arrays.asList(neighbors),
                   Arrays.asList(decoded));
-            // List<String> kmers = new LinkedList<>();
-            // String [] s = new String [0];
-            report(d, m.outputFile, decoded); // kmers.toArray(s));
+            }
+            // report(d, outputFile, decoded); // kmers.toArray(s));
         }
         return nbrs;
     }
     
+    // many - broken?
     static Neighbors process(final FastKmerSearchData d,
                              final KmerSearch searchTODO) {
         Neighbors nbrs = new Neighbors(d);
         for (int ix = 0; ix <= d.len - d.k; ++ix) {
             Integer kmer = d.base4kmers[ix];
-            // print("test: %s \n", nbrs.test(kmer));
-            // Integer [] neighbors = nbrs.nextKmerInclRelatives(kmer);
-            // fix:
+            print("test: %s \n", nbrs.test(kmer));
+            // neighbors = nbrs.nextKmerInclRelatives(kmer);
             final List<Integer> neighbors
                 = new LinkedList<>(); // Integer [nbrs.permsSize];
-            nbrs.nextKmerPositionInclRelatives(kmer, 0, 0, neighbors);
+            nbrs.nextKmerRelatives(kmer, 
+                0, 0, neighbors, false);
             print("nbrs: %s \n%s \n%s \n", kmer, 
                 neighbors,
                 Arrays.asList(Base4er.decode(neighbors, d)));
@@ -107,7 +172,6 @@ public class Neighbors extends Processor
               Arrays.asList(placePermuts[0]),
               Arrays.asList(placePermuts[1]),
               Arrays.asList(placePermuts[2]));
-        //  int [][] places = new int [d.k][4];
     }
     
     // move?
@@ -117,7 +181,6 @@ public class Neighbors extends Processor
         for (int i = 1; i < d.k; ++i) {
             for (int j = i; j <= d.k; ++j) {
                 s += permuts; // 8*16..1*16
-                
             }    
             if (d.hamming == 1) {
                 break;
@@ -131,99 +194,102 @@ public class Neighbors extends Processor
         final Integer [] jPlace = placePermuts[0];
         int kmerZero = zeroPlaces(
             zeroPlaces(kmer, iPlace), jPlace);
-            
-        
         return list(new Integer []
             { kmer, kmerZero, zeroPlaces(kmer, iPlace)});
     }
     
     // recursive
-    void nextKmerPositionInclRelatives(final int kmer, 
-                                       int depth,
-                                       int kmerZero,
-                                       final Collection<Integer> kPerms) {
+    void nextKmerRelatives(final int kmer, 
+                           final int depth,
+                           final int permute,
+                           final Collection<Integer> kPerms,
+                           final boolean exactDistance) {
         final int base = Base4er.BASE;
         // r to l is fine
         for (int i = depth; i < d.k; ++i) {
+            int checkCt = 0;
+            Set<Integer> check = new HashSet<>();
             final Integer [] iPlace = placePermuts[i]; // e.g. @16:12,8,4,0   
-            kmerZero = depth == 0 
-                ? zeroPlaces(kmer, iPlace) : kmerZero;
-            if (i == 0) 
-                print("zero: %s %s %s\n", depth, 
-                Arrays.asList(iPlace),
-                kmerZero, 
-                Base4er.decode(kmerZero, d));
+            int permuteI = (depth == 0)
+                ? zeroPlaces(kmer, iPlace)
+                : zeroPlaces(permute, iPlace);
+            if (false && debug && depth == 0) {
+                print("zero: %d %d %s %s %s\n", 
+                    depth, 
+                    i,
+                    Arrays.asList(iPlace),
+                    permute, 
+                    Base4er.decode(permuteI, d));
+            }
             for (int b = 0; b < base ; ++b) {
                 // todo check an int array first?
-                int permute = permute(kmerZero, iPlace[b]);
+                int permuteIB = permuteBase4(permuteI, 
+                    iPlace[b]);
                 // add at ANY depth? not just hamming?
-                kPerms.add(permute);
-                
+                if (!exactDistance || 
+                       (depth + 1 == d.hamming
+                        && exactHamming(d, kmer, permuteIB))) {
+                    kPerms.add(permuteIB);
+                    check.add(permuteIB);
+                    checkCt++;
+                }
                 if (depth + 1 < d.hamming) {
                     // recur
-                    nextKmerPositionInclRelatives(kmer, 
-                        depth + 1,             
-                        permute, 
-                        kPerms);
+                    nextKmerRelatives(kmer, 
+                        i + 1,             
+                        permuteIB, 
+                        kPerms,
+                        exactDistance);
                 }
             }
+            if (false && debug && kPerms.size() < 500)
+                print("ct: %d %d\n", check.size(), checkCt);
         }
     }
     
+    int count = 0;
     
-    // todo ... bit math
-    Integer [] nextKmerInclRelatives(int kmer) {
-        final Integer [] kPerms = new Integer [permsSize];
-        
-        int kIx = 0;
-        final int base = Base4er.BASE;
-        // r to l
-        for (int i = 0; i < d.k; ++i) {
-            final Integer [] iPlace = placePermuts[i]; // e.g. @16:12,8,4,0 
-            int start = d.hamming == 1 ? i : i + 1;
-            for (int j = start; j < d.k; ++j) {
-                // time for 2 bit math !?!
-                final Integer [] jPlace = placePermuts[j];
-                int kmerZero = zeroPlaces(
-                    zeroPlaces(kmer, iPlace), jPlace);
-                    
-                print("zero: %s %s\n", kmerZero, 
-                    Base4er.decode(kmerZero, d));
-                for (int b = 0; b < base ; ++b) {
-                    for (int bb = 0; bb < base ; ++bb) {
-                        kPerms[kIx++] 
-                            = permute(kmerZero, iPlace[b], jPlace[bb] );
-                    }
-                    if (d.hamming == 1) {
-                        break;
-                    }
-                }
-            }
-            if (d.hamming == 1) {
-                break;
-            }
-        }        
-        return kPerms;
-    }
+    // 
     
-    int permute(int kmerZero, int ... kmerPlace) {
+    int permuteBase4(int kmerZero, int ... kmerPlace) {
         int perm = kmerZero;
         for (int p : kmerPlace) {
             perm |= p;
         }
-        return perm;
+        return kmerZero + kmerPlace[0];
     }
 
     // before permute
     int zeroPlaces(int kmer, Integer [] place) {
-        for (int i : place) {
-            if (i > 0 && (kmer & i) == i) {
-                return kmer - i;
-            } 
+        int perm = kmer;
+        for (int p : place) {
+            if ((perm & p) > 0) {
+                perm -= p;
+            }
         }
-        return kmer; // Zero in place
+        return perm;
     }
     
+    boolean exactHamming(FastKmerSearchData d, 
+                         int kmer, int kmerNeighbor) {
+        int diff = kmer ^ kmerNeighbor;
+        if (debug && diff != 9 && ++count < 1000) {
+            print("exact %s %s %d %d %d\n", 
+                  Base4er.decode(kmer, d), 
+                  Base4er.decode(kmerNeighbor, d),
+                  kmer, kmerNeighbor, diff);
+        }
+        // different base4's?
+        int diffBase4 = 0;
+        for (int i = 0; i < d.k; ++i) {
+            diffBase4 +=
+                (d.hammingBase2High[i] & diff) > 0 
+                ||
+                (d.hammingBase2Low[i] & diff) > 0 
+                ? 1 : 0;
+        }
+        return diffBase4 == d.hamming;
+    }
     
     // e.g. 16 kmers in i and j, 2 out of 9 pos
     

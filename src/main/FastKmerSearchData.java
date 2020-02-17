@@ -10,11 +10,14 @@ public class FastKmerSearchData extends Processor
     final int k; // kmer length
     final int L; // window length
     final int hamming; // hamming 
+    
+    final int [] hammingBase2High; // high base2 bit of base4 place
+    final int [] hammingBase2Low; // low bit
+    
     final String text;
     final Integer [] counts; // whole genome
     final int [] base4kmers; // base4 k-mer N
     int maxCount;
-    
     
     
     final int clumpThreshold;
@@ -24,6 +27,7 @@ public class FastKmerSearchData extends Processor
     final Map<String,Integer> countKmers 
         = new LinkedHashMap<>();
 
+   
     public FastKmerSearchData(final String text, 
                        final int k,
                        final int L,
@@ -43,6 +47,8 @@ public class FastKmerSearchData extends Processor
         this.L = L; // window, may be entire genome
         this.clumpThreshold = clumpThreshold;
         this.hamming = hammingDistance;
+        this.hammingBase2High = Base4er.base4HighBits(k);
+        this.hammingBase2Low = Base4er.base4LowBits(k);
         
         checkpoint();
          // costly init
