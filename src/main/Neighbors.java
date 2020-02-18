@@ -40,17 +40,47 @@ public class Neighbors extends Processor
             println("processFirstKmerNeighborDetail all");
             checkpoint();
             Neighbors nb = processKmerNeighbors(m.outputFile, 
+                                                d, Integer.MAX_VALUE, false);
+            nb.reportFrequentAndMismatch(d, 
+                                                 m.outputFile);
+        } else if (m.options.contains("all rc")) {
+            println("processFirstKmerNeighborDetail all rev compl");
+            checkpoint();
+            Neighbors nb = processKmerNeighbors(m.outputFile, 
                 d, Integer.MAX_VALUE, false);
-            nb.reportFrequentWordsWithMismatches(d, 
-                m.outputFile);
+            nb.reportFrequentAndMismatch(d, 
+                extension(m.outputFile, "-pre.txt"));
+            addReverseComplements(d);
+            nb.reportFrequentAndMismatch(d, 
+                 m.outputFile);
         } else {
             Neighbors nb = process(d, search);
             nb.analyzeAndReport(d, search, m.outputFile);
         }
 	}
     
-    static void reportFrequentWordsWithMismatches(FastKmerSearchData d, 
-                                                  String outputFile) throws Exception {
+    static void addReverseComplements(final FastKmerSearchData d) {
+        final boolean debug = false;
+        
+        print("t() %s\nrevcompl\n", checkpoint());
+        checkpoint();
+        
+        for (int ixRC = 0; ixRC < d.clumpCount.length; ++ixRC) {
+            int ctRC = d.clumpCount[ixRC];
+            if (ctRC > 0) {
+                int ix = Base4er.iAmReverseComplementOf(ixRC, d);
+                d.clumpCount[ix] += ctRC;
+                if (debug && ctRC > 3) {
+                    print("%d:%d ", ixRC, ix);
+                }
+            }
+        }
+        print("\nt(revcompl): %d\n", checkpoint());
+    }
+    
+    static void reportFrequentAndMismatch(FastKmerSearchData d, 
+                                          String outputFile) throws Exception {
+        
         print("t(process): %d\n", 
               checkpoint());
         int max = 1;
@@ -62,6 +92,7 @@ public class Neighbors extends Processor
                 max = ct;
             }
         }
+        boolean debug = true && max < 300;
 
         List<String> kmers = new LinkedList<>();
         for (int ix = 0; ix < d.clumpCount.length; ++ix) {
@@ -272,6 +303,7 @@ public class Neighbors extends Processor
         return perm;
     }
     
+                    
     boolean exactHamming(FastKmerSearchData d, 
                          int kmer, int kmerNeighbor) {
         int diff = kmer ^ kmerNeighbor;

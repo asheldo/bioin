@@ -191,4 +191,52 @@ public class Base4er extends Processor {
         }
         return kmer;
     }
+    
+    public static int iAmReverseComplementOf(final int kmerRC, 
+                                             final FastKmerSearchData d) {
+        int kmer = 0;
+        boolean debugLog = false;
+        for (int i = 0; i < d.k; ++i) {
+            final boolean debug = debugLog &&
+                i == 0 && kmerRC < 10000;
+            final Integer [] placeRC = Base4er.pow4Permutations[i];
+            final Integer [] place = Base4er.pow4Permutations[d.k - i - 1];
+            if (debug) {
+                print(". pl/%d %d %d ", placeRC[1], placeRC[2], placeRC[3]);
+            }
+            if ((placeRC[3] & kmerRC) == placeRC[3]) {
+                // noop // kmer += 4 place[0]; T A
+                if (debug) {
+                    print(" 3/%s:%s %s ", kmerRC, kmer,
+                          (placeRC[3] & kmerRC));
+                }
+            }
+            else if ((placeRC[2] & kmerRC) == placeRC[2]) {
+                kmer += place[1]; // G C
+                if (debug) {
+                    print(" 2/%s:%s %s ", kmerRC, kmer,
+                          (placeRC[2] & kmerRC));
+                }
+            }
+            else if ((placeRC[1] & kmerRC) == placeRC[1]) {
+                kmer += place[2]; // C G
+                if (debug) {
+                    print(" 1/%s:%s %d ", kmerRC, kmer,
+                          (placeRC[2] & kmerRC));
+                }
+            }
+            else { // if ((placeRC[] & kmerRC) == 0) {
+                kmer += place[3]; // A->T
+                if (debug) {
+                    print(" 0/%s:%s ", kmerRC, kmer);
+                }
+            }
+
+            if (debugLog && i + 1 == d.k) {
+                print("\n%s:%s\n", decode(kmerRC, d), decode(kmer, d));
+            }
+        }
+        return kmer; 
+    }
+    
 }
