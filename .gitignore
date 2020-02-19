@@ -3,8 +3,8 @@
 *.dex
 
 # analysis
-*.out
-*.txt
+*.out*
+*.txt*
 
 # Log file
 *.log

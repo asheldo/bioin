@@ -31,28 +31,28 @@ public class Neighbors extends Processor
             println("processFirstKmerNeighborDetail exact");
             Neighbors nb = processKmerNeighbors(
                 extension(m.outputFile, "_exact.out"), 
-                d, 1, true);
+                d, 1, true, false);
         } else if (m.options.contains("neighbors")) {
             println("processFirstKmerNeighborDetail first");
             Neighbors nb = processKmerNeighbors(m.outputFile, 
-                d, 1, false);
+                d, 1, false, false);
         } else if (m.options.contains("all")) {
             println("processFirstKmerNeighborDetail all");
             checkpoint();
             Neighbors nb = processKmerNeighbors(m.outputFile, 
-                                                d, Integer.MAX_VALUE, false);
+                                                d, Integer.MAX_VALUE, 
+                                                false, false);
             nb.reportFrequentAndMismatch(d, 
                                                  m.outputFile);
         } else if (m.options.contains("all rc")) {
             println("processFirstKmerNeighborDetail all rev compl");
             checkpoint();
             Neighbors nb = processKmerNeighbors(m.outputFile, 
-                d, Integer.MAX_VALUE, false);
+                d, Integer.MAX_VALUE, false, true);
             nb.reportFrequentAndMismatch(d, 
-                extension(m.outputFile, "-pre.txt"));
-            addReverseComplements(d);
-            nb.reportFrequentAndMismatch(d, 
-                 m.outputFile);
+                extension(m.outputFile, ".txt"));
+            // addReverseComplements(d);
+            // nb.reportFrequentAndMismatch(d, m.outputFile);
         } else {
             Neighbors nb = process(d, search);
             nb.analyzeAndReport(d, search, m.outputFile);
@@ -68,7 +68,7 @@ public class Neighbors extends Processor
         for (int ixRC = 0; ixRC < d.clumpCount.length; ++ixRC) {
             int ctRC = d.clumpCount[ixRC];
             if (ctRC > 0) {
-                int ix = Base4er.iAmReverseComplementOf(ixRC, d);
+                int ix = Base4er.reverseComplementOf(ixRC, d);
                 d.clumpCount[ix] += ctRC;
                 if (debug && ctRC > 3) {
                     print("%d:%d ", ixRC, ix);
@@ -97,7 +97,7 @@ public class Neighbors extends Processor
         List<String> kmers = new LinkedList<>();
         for (int ix = 0; ix < d.clumpCount.length; ++ix) {
             int ct = d.clumpCount[ix];
-            if (ct > Math.min(1, max - 3)) {
+            if (ct > Math.max(0, max - 3)) {
                 String kmer = Base4er.decode(ix, d);
                 if (ct == max) {
                     kmers.add(kmer);
@@ -130,8 +130,9 @@ public class Neighbors extends Processor
     static Neighbors processKmerNeighbors(final String outputFile, 
                                           final FastKmerSearchData d,
                                           final int limit, // KmerSearch searchTODO,
-                                          final boolean exactDistance) throws Exception {
-        Neighbors nbrs = new Neighbors(d);
+                                          final boolean exactDistance,
+                                          final boolean reverseCompMis) throws Exception {
+        Neighbors nbrs = new Neighbors(d, reverseCompMis);
         for (int ix = 0; ix < limit
                 && ix <= d.len - d.k; ++ix) {
             Integer kmer = d.base4kmers[ix];
@@ -143,13 +144,25 @@ public class Neighbors extends Processor
             // Integer [] neighbors = nbrs.nextKmerInclRelatives(kmer);
             // fix:
             final Collection<Integer> neighbors
-                = new LinkedHashSet<>(); // Integer [nbrs.permsSize];
-            
+                = new HashSet<>();
+            //    = new LinkedList<>();
             nbrs.nextKmerRelatives(kmer, 
                 0, 0, neighbors, exactDistance);
             for (int kmerI : neighbors) {
                 ++d.clumpCount[kmerI];
             }
+               if (reverseCompMis) {
+                   neighbors.clear();
+                   int reverseComplement = Base4er.reverseComplementOf(kmer, d);
+                   nbrs.nextKmerRelatives(reverseComplement,
+                                          0, 0, neighbors, 
+                                          // true); 
+                                          exactDistance);
+                   for (int kmerI : neighbors) {
+                       ++d.clumpCount[kmerI];
+                   }                       
+               }
+            
             if (debug) {
                 String [] decoded = Base4er.decode(neighbors, d);
                 print("process nbrs: %s \n%s \n%s \n", 
@@ -165,7 +178,7 @@ public class Neighbors extends Processor
     // many - broken?
     static Neighbors process(final FastKmerSearchData d,
                              final KmerSearch searchTODO) {
-        Neighbors nbrs = new Neighbors(d);
+        Neighbors nbrs = new Neighbors(d, false);
         for (int ix = 0; ix <= d.len - d.k; ++ix) {
             Integer kmer = d.base4kmers[ix];
             print("test: %s \n", nbrs.test(kmer));
@@ -187,6 +200,8 @@ public class Neighbors extends Processor
  
     final FastKmerSearchData d;
     
+    final boolean reverseCompMis;
+    
     final int permuts;
     
     final int permsSize;
@@ -195,8 +210,9 @@ public class Neighbors extends Processor
         = Base4er.pow4Permutations; // excludes implicit places' zeroes
     
  
-    Neighbors(FastKmerSearchData d) {
+    Neighbors(FastKmerSearchData d, boolean reverseCompMis) {
         this.d = d;
+        this.reverseCompMis = reverseCompMis;
         int o = FastKmerSearchData.OBJECTS; // 4 bases
         // 2^4=16
         permuts = (int) Math.pow(o, d.hamming); // 4^2 or 4^1
