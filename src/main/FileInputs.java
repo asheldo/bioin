@@ -49,24 +49,51 @@ public class FileInputs extends Processor {
     public static FileInputs scanFileSingleInput() throws Exception {
         return scanFileSingleInput(1, "dataset.txt");
     }
-
+    
     public static FileInputs scanFileSingleInput(int take,
                                                  String f) throws Exception {
+         return scanFileSingleInput(take, " ", f, false);
+    }
+    
+    public static FileInputs scanFileSingleInput(final int take,
+                                                 final String f,
+                                                 final boolean paramPrefix) throws Exception {
+        return scanFileSingleInput(take, " ", f, paramPrefix);
+    }
+    
+    
+    public static FileInputs scanFileSingleInput(
+            final int take, 
+            final String joinDelimiter,                                               
+            final String f,
+            final boolean paramPrefix) throws Exception {
 
-        FileInputs m = new FileInputs();
-
+        FileInputs m = new FileInputs(paramPrefix);
         BufferedReader input = new BufferedReader(
             new InputStreamReader(System.in));
-        m.scanLines(input, f, take);
+        m.scanLines(input, f, take, joinDelimiter);
         input.close();
         return m;
     }
 
-    public Optional<String> preface = Optional.empty();
 
+    public static FileInputs scanFileParamsAndSources(                                         
+        final String f) throws Exception {
+        boolean paramPrefix = true;
+        FileInputs m = new FileInputs(paramPrefix);
+        BufferedReader input = new BufferedReader(
+            new InputStreamReader(System.in));
+        m.scanLinesArray(input, f);
+        input.close();
+        return m;
+    }
+    
+    public Optional<String> preface = Optional.empty();
+    public Optional<String> paramPrefix = Optional.empty();
+    
     public String sourceText0 = "";
 
-    public String [] sourceText = new String [1];
+    public String [] sourceText; // = new String [1];
 
     public String epilogue = "";
 
@@ -79,7 +106,17 @@ public class FileInputs extends Processor {
     public String filePath;
 
     public String outputFile;
+    
+    private final boolean hasParamPrefix;
 
+    FileInputs() {
+        this(false);
+    }
+    
+    FileInputs(boolean hasParamPrefix) {
+        this.hasParamPrefix = hasParamPrefix;
+    }
+    
     @Override
     public String toString() {
         return String.format(
@@ -88,7 +125,8 @@ public class FileInputs extends Processor {
             this.sourceText0.length());
     }
     
-    private void scan(BufferedReader input, String suggest) throws Exception
+    void scan(final BufferedReader input,
+              final String suggest) throws Exception
     {
         filePath =
             new StringBuilder("/storage/emulated/0/AppProjects/")
@@ -126,7 +164,16 @@ public class FileInputs extends Processor {
         outputFile = filePath + ".out";
     }
     
-    private void scanLines(BufferedReader input, String f, int take) throws Exception
+    void scanLinesArray(final BufferedReader input, 
+                        final String f) throws Exception
+    {
+        scanLines(input, f, -1, null);
+    }
+    
+    void scanLines(final BufferedReader input, 
+                   final String f,
+                   final int take,
+                   final String joinDelimiter) throws Exception
     {
         filePath =
             new StringBuilder("/storage/emulated/0/AppProjects/")
@@ -153,24 +200,35 @@ public class FileInputs extends Processor {
                       proj.isEmpty() ? p : proj, 
                       file.isEmpty() ? f : file);
         outputFile = filePath + ".out";
-        scanLines(take);
-        
+        if (joinDelimiter != null) {
+            readSourceLines(take, joinDelimiter);
+        } else {
+            readSourceLinesArray();
+        }
     }
 
-    public void scanLines(int take) throws Exception
+    // sourceText
+    
+    public void readSourceLines(final int take) throws Exception {
+       readSourceLines(take, " ");
+    }
+        
+    public void readSourceLines(final int take,
+                                final String joinDelimiter) throws Exception
     {
-        List<String> data = TextFileUtil.readTextAndK(filePath);
+        final List<String> data =
+            TextFileUtil.readTextAndK(filePath);
         int lim = take < 0 ? data.size() : take;
         StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < lim; ++i)
-        {
+        for (int i = 0; i < lim; ++i) {
             String get = data.get(i);
-            if (get != null && !takePreface(get))
-            {
+            if (get != null && (i > 0 ||
+                    (takeParamPrefix(get)
+                    && !takePreface(get)))) 
+                {
                 sb.append(data.get(i));
-                if (i < take)
-                { // splitable
-                    sb.append(" ");
+                if (i < take) { // splitable
+                    sb.append(joinDelimiter);
                 }
                 if (i % 1000 == 0) 
                     print("" + (char) ('\\' + i % 8));
@@ -179,9 +237,30 @@ public class FileInputs extends Processor {
         sourceText[0] = sourceText0 = sb.toString();
     }
 
+
+    public void readSourceLinesArray() throws Exception
+    {
+        final List<String> data =
+            TextFileUtil.readTextAndK(filePath);
+        int lim = data.size();
+        sourceText = new String [lim];
+        for (int i = 0; i < lim; ++i) {
+            String get = data.get(i);
+            if (get != null && (i > 0 ||
+                (takeParamPrefix(get)
+                && !takePreface(get)))) 
+            {
+                sourceText[i-1] = data.get(i);
+                if (i % 10 == 0) {
+                    print("" + (char) ('\\' + i % 8));
+                }
+            }
+        }
+        sourceText0 = sourceText[0];
+    }
+    
     private boolean takePreface(final String get) {
-        if (!preface.isPresent())
-        {
+        if (!preface.isPresent()) {
             String pre = get.substring(0, 
                                        Math.min(4, get.length()));
             if (!pre.matches("\\s*[A-Da-d]+"))
@@ -193,6 +272,26 @@ public class FileInputs extends Processor {
             else
             {
                 preface = Optional.of("");
+            }
+        }
+        return false;
+    }
+    
+    private boolean takeParamPrefix(final String get) {
+        if (hasParamPrefix && !paramPrefix.isPresent())
+        {
+            String pre = get.substring(0, 
+                Math.min(4, get.length()));
+            if (pre.matches("\\s*[\\d ]+"))
+            {
+                paramPrefix = Optional.of(get);
+                params = Arrays.asList(get.split(" "));
+                print("params from: ", get, params);
+                return true; // continue;
+            }
+            else
+            {
+                paramPrefix = Optional.of("");
             }
         }
         return false;

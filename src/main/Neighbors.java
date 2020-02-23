@@ -2,6 +2,7 @@ package main;
 
 import java.util.*;
 
+/** Neighbors -- Most Frequent Kmers With Mismatches */
 public class Neighbors extends Processor
 {
     static boolean debug = false;
@@ -26,19 +27,19 @@ public class Neighbors extends Processor
         KmerSearch search = KmerSearch.KmerSearchFactory
             .create(m.options);
         if (m.options.contains("exact")) {
-            FastKmerSearchData d = readSource(m, k, hammingD);
+            FastKmerSearchData d = readSource(m, k, hammingD, -1);
             println("processFirstKmerNeighborDetail exact");
             Neighbors nb = processKmerNeighbors(
                 extension(m.outputFile, "_exact.out"), 
                 d, 1, true, false);
         } else if (m.options.contains("neighbors")) {
             println("processFirstKmerNeighborDetail first");
-            FastKmerSearchData d = readSource(m, k, hammingD);
+            FastKmerSearchData d = readSource(m, k, hammingD, -1);
             Neighbors nb = processKmerNeighbors(m.outputFile, 
                 d, 1, false, false);
         } else if (m.options.contains("all")) {
             println("processFirstKmerNeighborDetail all");
-            FastKmerSearchData d = readSource(m, k, hammingD);
+            FastKmerSearchData d = readSource(m, k, hammingD, -1);
             checkpoint();
             Neighbors nb = processKmerNeighbors(m.outputFile, 
                 d, Integer.MAX_VALUE, 
@@ -46,7 +47,7 @@ public class Neighbors extends Processor
             nb.reportFrequentAndMismatch(d, m.outputFile);
         } else if (m.options.contains("all rc")) {
             println("processFirstKmerNeighborDetail all rev compl");
-            FastKmerSearchData d = readSource(m, k, hammingD);
+            FastKmerSearchData d = readSource(m, k, hammingD, -1);
             checkpoint();
             Neighbors nb = processKmerNeighbors(m.outputFile, 
                 d, Integer.MAX_VALUE, false, true);
@@ -54,13 +55,17 @@ public class Neighbors extends Processor
                 extension(m.outputFile, ".txt"));
             // addReverseComplements(d);
             // nb.reportFrequentAndMismatch(d, m.outputFile);
-        } else if (checkSubOrigin(m)) {
+        } else if (checkSubOriginOption(m)) {
             // rc@3764856 
             // RESCAN
             print("processFirstKmerNeighborDetail rc@%s", m.options);
-            m.scanLines(-1); //  "Salmonella_enterica.txt");
+            m.readSourceLines(-1); //  "Salmonella_enterica.txt");
             hammingD = hamming(m.options, hammingD);
-            FastKmerSearchData d = readSource(m, k, hammingD);
+            int subOriginPlusMinus = subOriginPlusMinus(m.options, 
+                500);
+            FastKmerSearchData d = readSource(m, k, 
+                hammingD,  
+                subOriginPlusMinus);
             checkpoint();
             Neighbors nb = processKmerNeighbors(m.outputFile, 
                 d, Integer.MAX_VALUE, false, true);
@@ -69,39 +74,64 @@ public class Neighbors extends Processor
             // addReverseComplements(d);
             // nb.reportFrequentAndMismatch(d, m.outputFile);
         } else {
-            FastKmerSearchData d = readSource(m, k, hammingD);
+            FastKmerSearchData d = readSource(m, k, hammingD, -1);
             Neighbors nb = process(d, search);
             nb.analyzeAndReport(d, search, m.outputFile);
         }
 	}
 
-    private static FastKmerSearchData readSource(FileInputs m, 
-                                                 int k, int hammingD) {
-        String sourceText0 = subOrigin(m, 250);
+    static FastKmerSearchData readSource(final FileInputs m, 
+                                         final int k,
+                                         final int hammingD,
+                                         final int subOriginPlusMinus
+                                         ) {
+        return readSource(m, k, hammingD, null, subOriginPlusMinus);
+    }
+    
+    static FastKmerSearchData readSource(final FileInputs m, 
+                                         final int k,
+                                         final int hammingD,
+                                         final List<Integer> splitStarts,
+                                         final int subOriginPlusMinus) {
+        String sourceText0 = subOriginIf(m, 250); // 
         FastKmerSearchData d = new FastKmerSearchData(
             sourceText0, k, 
             sourceText0.length(), 0, hammingD);
         return d;
     }
     
-    static boolean checkSubOrigin(FileInputs m) {
+    static boolean checkSubOriginOption(FileInputs m) {
         print("check %s", new LinkedList(m.options));
         return m.options.size() > 0
             && m.options.toString().contains("rc@");
     }
     
-
     static int hamming(Set<String> options, int defH) {
         for (Object o : options) {
             print("opt %s\n", o);
-            String h = o.toString()
-                .split("rc@")[0];
-            print("hamming %s\n", h);
-            if (!h.isEmpty()) {
-                return Integer.parseInt(h);
-            }
+            List<String> prefix = Arrays.asList(o.toString()
+                .split("rc@")[0]                    
+                .split("\\+-"));
+            print("hammingD %s\n", prefix);
+            return Integer.parseInt(prefix.get(0));
         }
         return defH;
+    }
+    
+    static int subOriginPlusMinus(final Set<String> options, 
+                                  final int defaultPM) {
+        for (Object o : options) {
+            print("opt %s\n", o);
+            List<String> prefix = Arrays.asList(o.toString()
+                .split("rc@")[0]
+                .split("\\+-"));
+            print("plusMinus %s\n", prefix);
+            if (prefix.size() > 1) {
+                return Integer.parseInt(
+                    prefix.get(1));
+            }
+        }
+        return defaultPM;
     }
     
     static int ori(Object [] options, int defOri) {
@@ -117,10 +147,10 @@ public class Neighbors extends Processor
         return defOri;
     }
     
-    static String subOrigin(FileInputs m, int half) {
+    static String subOriginIf(FileInputs m, int half) {
         // int line = m.sourceText0.indexOf("\n");
         // m.sourceText0 = m.sourceText0.substring(line + 1);
-        if (checkSubOrigin(m)) {
+        if (checkSubOriginOption(m)) {
             int start = ori(m.options.toArray(), 0);
             int a = start - half;
             int b = start + half;

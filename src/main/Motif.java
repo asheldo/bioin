@@ -3,158 +3,127 @@ package main;
 import java.util.*;
 import main.*;
 
-public class Motif extends Processor
+public class Motif extends Neighbors // Processor
 {
     static boolean debug = false;
 
     public static void main(String[] args) throws Exception {
-        FileInputs m = FileInputs.scanFileInputs();
+        FileInputs m = FileInputs.scanFileParamsAndSources(
+            "Salmonella_enterica.txt");
         print("inputs: %s \n", m);
         int k = 9;
         int hammingD = 2;
-        if (m.param1 != null) {
-            String [] params = 
-                m.param1.trim().split(" ");
+        if (m.params != null) {
             try {
-                k = Integer.parseInt(params[0]);
-                if (params.length > 1) {
-                    hammingD = Integer.parseInt(params[1]);
+                k = Integer.parseInt(m.params.get(0));
+                if (m.params.size() > 1) {
+                    hammingD = Integer.parseInt(m.params.get(1));
                 }
             } catch (Exception e) {
                 // e.printStackTrace(System.err);
             }
         }
-        KmerSearch search = KmerSearch.KmerSearchFactory
-            .create(m.options);
-        if (m.options.contains("exact")) {
-            FastKmerSearchData d = readSource(m, k, hammingD);
-            println("processFirstKmerNeighborDetail exact");
-            Neighbors nb = processKmerNeighbors(
-                extension(m.outputFile, "_exact.out"), 
-                d, 1, true, false);
-        } else if (m.options.contains("neighbors")) {
-            println("processFirstKmerNeighborDetail first");
-            FastKmerSearchData d = readSource(m, k, hammingD);
-            Neighbors nb = processKmerNeighbors(m.outputFile, 
-                                                d, 1, false, false);
-        } else if (m.options.contains("all")) {
-            println("processFirstKmerNeighborDetail all");
-            FastKmerSearchData d = readSource(m, k, hammingD);
-            checkpoint();
-            Neighbors nb = processKmerNeighbors(m.outputFile, 
-                                                d, Integer.MAX_VALUE, 
-                                                false, false);
-            nb.reportFrequentAndMismatch(d, m.outputFile);
-        } else if (m.options.contains("all rc")) {
-            println("processFirstKmerNeighborDetail all rev compl");
-            FastKmerSearchData d = readSource(m, k, hammingD);
-            checkpoint();
-            Neighbors nb = processKmerNeighbors(m.outputFile, 
-                                                d, Integer.MAX_VALUE, false, true);
-            nb.reportFrequentAndMismatch(d, 
-                                         extension(m.outputFile, ".txt"));
-            // addReverseComplements(d);
-            // nb.reportFrequentAndMismatch(d, m.outputFile);
-        } else if (checkSubOrigin(m)) {
-            // rc@3764856 
-            // RESCAN
-            print("processFirstKmerNeighborDetail rc@%s", m.options);
-            m.scanLines(-1); //  "Salmonella_enterica.txt");
-            hammingD = hamming(m.options, hammingD);
-            FastKmerSearchData d = readSource(m, k, hammingD);
-            checkpoint();
-            Neighbors nb = processKmerNeighbors(m.outputFile, 
-                                                d, Integer.MAX_VALUE, false, true);
-            nb.reportFrequentAndMismatch(d, 
-                                         extension(m.outputFile, ".txt"));
-            // addReverseComplements(d);
-            // nb.reportFrequentAndMismatch(d, m.outputFile);
-        } else {
-            FastKmerSearchData d = readSource(m, k, hammingD);
-            Neighbors nb = process(d, search);
-            nb.analyzeAndReport(d, search, m.outputFile);
+        {
+            // START HERE
+            println("Motif.processKmerMotif w/o rev compl");
+            processMotifs(m, k, hammingD);
         }
     }
 
-    private static FastKmerSearchData readSource(FileInputs m, 
-                                                 int k, int hammingD) {
-        String sourceText0 = subOrigin(m, 250);
+    // Variants of factory method
+    static FastKmerSearchData readSourceN(final String text, 
+                                         final int k,
+                                         final int hammingD)
+    {
+        print("\nText/n: %s/%d\n",
+            text, k);
         FastKmerSearchData d = new FastKmerSearchData(
-            sourceText0, k, 
-            sourceText0.length(), 0, hammingD);
+            text, k, 
+            text.length(), 0, hammingD);
         return d;
     }
 
-    static boolean checkSubOrigin(FileInputs m) {
-        print("check %s", new LinkedList(m.options));
-        return m.options.size() > 0
-            && m.options.toString().contains("rc@");
+    // e.g. 16 kmers in i and j, 2 out of 9 pos
+    static void processMotifs(FileInputs m,
+                              final int k,
+                              final int hammingD) throws Exception {
+        final String kmer = null;
+        final int ct = m.sourceText.length;
+        for (int i = 0; i < ct; ++i) {
+            String text = m.sourceText[i];
+            
+        
+            FastKmerSearchData d = readSourceN(text,
+                k, hammingD);
+            checkpoint();
+            Motif nbrs = getKmerNeighbors(m.outputFile, 
+                d, Integer.MAX_VALUE,         
+                false, true);
+        
+            nbrs.reportFrequent(d, 
+                            extension(m.outputFile, ".out"));
+        }
+        TextFileUtil.writeKmersListPlus(
+            extension(m.outputFile, ".out"),
+            kmer);
     }
+    
 
-
-    static int hamming(Set<String> options, int defH) {
-        for (Object o : options) {
-            print("opt %s\n", o);
-            String h = o.toString()
-                .split("rc@")[0];
-            print("hamming %s\n", h);
-            if (!h.isEmpty()) {
-                return Integer.parseInt(h);
+    // 1
+    static Motif getKmerNeighbors(final String outputFile, 
+                                  final FastKmerSearchData d,
+                                  final int limit, // KmerSearch searchTODO,
+                                  final boolean exactDistance,
+                                  final boolean reverseCompMis) throws Exception {
+        Motif nbrs = new Motif(d, reverseCompMis);
+        for (int ix = 0; ix < limit
+             && ix <= d.len - d.k; ++ix) {
+            Integer kmer = d.base4kmers[ix];
+            if (debug) {
+                print("test: %s %s\n", 
+                      Base4er.decode(kmer, d),
+                      nbrs.test(kmer));
             }
-        }
-        return defH;
-    }
-
-    static int ori(Object [] options, int defOri) {
-        for (Object o : options) {
-            print("opt %s\n", o);
-            String start = o.toString()
-                .split("rc@")[1];
-            print("ori %s\n", start);
-            if (!start.isEmpty()) {
-                return Integer.parseInt(start);
+            final Collection<Integer> neighbors
+                = new HashSet<>();
+            // 
+            nbrs.nextKmerRelatives(kmer, 
+                                   0, 0, neighbors, exactDistance);
+            for (int kmerI : neighbors) {
+                ++d.clumpCount[kmerI];
             }
-        }
-        return defOri;
-    }
-
-    static String subOrigin(FileInputs m, int half) {
-        // int line = m.sourceText0.indexOf("\n");
-        // m.sourceText0 = m.sourceText0.substring(line + 1);
-        if (checkSubOrigin(m)) {
-            int start = ori(m.options.toArray(), 0);
-            int a = start - half;
-            int b = start + half;
-            b = Math.min(b, m.sourceText0.length());
-            a = Math.max(a, 0);
-            print("%d %d", a, b);
-            m.sourceText0 = m.sourceText0.substring(a, b);
-        }
-        return m.sourceText0;
-    }
-
-    static void addReverseComplements(final FastKmerSearchData d) {
-        final boolean debug = false;
-
-        print("t() %s\nrevcompl\n", checkpoint());
-        checkpoint();
-
-        for (int ixRC = 0; ixRC < d.clumpCount.length; ++ixRC) {
-            int ctRC = d.clumpCount[ixRC];
-            if (ctRC > 0) {
-                int ix = Base4er.reverseComplementOf(ixRC, d);
-                d.clumpCount[ix] += ctRC;
-                if (debug && ctRC > 3) {
-                    print("%d:%d ", ixRC, ix);
-                }
+            if (reverseCompMis) {
+                neighbors.clear();
+                int reverseComplement = Base4er.reverseComplementOf(kmer, d);
+                nbrs.nextKmerRelatives(reverseComplement,
+                                       0, 0, neighbors, 
+                                       // true); 
+                                       exactDistance);
+                for (int kmerI : neighbors) {
+                    ++d.clumpCount[kmerI];
+                }                       
             }
+
+            if (debug) {
+                String [] decoded = Base4er.decode(neighbors, d);
+                print("process nbrs: %s \n%s \n%s \n", 
+                      kmer, 
+                      Arrays.asList(neighbors),
+                      Arrays.asList(decoded));
+            }
+            // report(d, outputFile, decoded); // kmers.toArray(s));
         }
-        print("\nt(revcompl): %d\n", checkpoint());
+        return nbrs;
     }
 
-    static void reportFrequentAndMismatch(FastKmerSearchData d, 
-                                          String outputFile) throws Exception {
-
+    //
+   
+    Motif(FastKmerSearchData d, boolean reverseCompMis) {
+        super(d, reverseCompMis);
+    }
+    
+    void reportFrequent(FastKmerSearchData d, 
+                        String outputFile) throws Exception {
         print("t(process): %d\n", 
               checkpoint());
         int max = 1;
@@ -188,287 +157,8 @@ public class Motif extends Processor
         String list = kmers.toString()
             .replaceAll("[,\\[\\]]", "");
         print("kmers max: %s", list);
-        TextFileUtil.writeKmersListPlus(
-            outputFile, // *.out in assets
-            max,
-            list, // frequent-est k-length patterns
-            // d.countKmers.get(kmers.get(0)), // frequency
-            kmers.size(),
-            counts,
-            d.text);
+        
     }
 
-
-    // Variants of Neighbors factory method
-
-    // 1
-    static Neighbors processKmerNeighbors(final String outputFile, 
-                                          final FastKmerSearchData d,
-                                          final int limit, // KmerSearch searchTODO,
-                                          final boolean exactDistance,
-                                          final boolean reverseCompMis) throws Exception {
-        Neighbors nbrs = new Neighbors(d, reverseCompMis);
-        for (int ix = 0; ix < limit
-             && ix <= d.len - d.k; ++ix) {
-            Integer kmer = d.base4kmers[ix];
-            if (debug) {
-                print("test: %s %s\n", 
-                      Base4er.decode(kmer, d),
-                      nbrs.test(kmer));
-            }
-            // Integer [] neighbors = nbrs.nextKmerInclRelatives(kmer);
-            // fix:
-            final Collection<Integer> neighbors
-                = new HashSet<>();
-            //    = new LinkedList<>();
-            nbrs.nextKmerRelatives(kmer, 
-                                   0, 0, neighbors, exactDistance);
-            for (int kmerI : neighbors) {
-                ++d.clumpCount[kmerI];
-            }
-            if (reverseCompMis) {
-                neighbors.clear();
-                int reverseComplement = Base4er.reverseComplementOf(kmer, d);
-                nbrs.nextKmerRelatives(reverseComplement,
-                                       0, 0, neighbors, 
-                                       // true); 
-                                       exactDistance);
-                for (int kmerI : neighbors) {
-                    ++d.clumpCount[kmerI];
-                }                       
-            }
-
-            if (debug) {
-                String [] decoded = Base4er.decode(neighbors, d);
-                print("process nbrs: %s \n%s \n%s \n", 
-                      kmer, 
-                      Arrays.asList(neighbors),
-                      Arrays.asList(decoded));
-            }
-            // report(d, outputFile, decoded); // kmers.toArray(s));
-        }
-        return nbrs;
-    }
-
-    // many - broken?
-    static Neighbors process(final FastKmerSearchData d,
-                             final KmerSearch searchTODO) {
-        Neighbors nbrs = new Neighbors(d, false);
-        for (int ix = 0; ix <= d.len - d.k; ++ix) {
-            Integer kmer = d.base4kmers[ix];
-            print("test: %s \n", nbrs.test(kmer));
-            // neighbors = nbrs.nextKmerInclRelatives(kmer);
-            final List<Integer> neighbors
-                = new LinkedList<>(); // Integer [nbrs.permsSize];
-            nbrs.nextKmerRelatives(kmer, 
-                                   0, 0, neighbors, false);
-            print("nbrs: %s \n%s \n%s \n", kmer, 
-                  neighbors,
-                  Arrays.asList(Base4er.decode(neighbors, d)));
-            for (int kmerI : neighbors) {
-                ++d.clumpCount[kmerI];
-            }
-        }
-        return nbrs;
-    }
-
-
-    final FastKmerSearchData d;
-
-    final boolean reverseCompMis;
-
-    final int permuts;
-
-    final int permsSize;
-
-    final Integer [][] placePermuts
-    = Base4er.pow4Permutations; // excludes implicit places' zeroes
-
-
-    Motif(FastKmerSearchData d, boolean reverseCompMis) {
-        this.d = d;
-        this.reverseCompMis = reverseCompMis;
-        int o = FastKmerSearchData.OBJECTS; // 4 bases
-        // 2^4=16
-        permuts = (int) Math.pow(o, d.hamming); // 4^2 or 4^1
-        permsSize = calcSize();
-        print("permSize pp: %s %s %s %s \n", permsSize,
-              Arrays.asList(placePermuts[0]),
-              Arrays.asList(placePermuts[1]),
-              Arrays.asList(placePermuts[2]));
-    }
-
-    // move?
-    private int calcSize() {
-        int s = 0; 
-        // 9 .. 1
-        for (int i = 1; i < d.k; ++i) {
-            for (int j = i; j <= d.k; ++j) {
-                s += permuts; // 8*16..1*16
-            }    
-            if (d.hamming == 1) {
-                break;
-            }
-        }
-        return s;
-    }
-
-    Object test(int kmer) {
-        final Integer [] iPlace = placePermuts[0];
-        final Integer [] jPlace = placePermuts[0];
-        int kmerZero = zeroPlaces(
-            zeroPlaces(kmer, iPlace), jPlace);
-        return list(new Integer []
-                    { kmer, kmerZero, zeroPlaces(kmer, iPlace)});
-    }
-
-    // recursive
-    void nextKmerRelatives(final int kmer, 
-                           final int depth,
-                           final int permute,
-                           final Collection<Integer> kPerms,
-                           final boolean exactDistance) {
-        final int base = Base4er.BASE;
-        // r to l is fine
-        for (int i = depth; i < d.k; ++i) {
-            int checkCt = 0;
-            Set<Integer> check = new HashSet<>();
-            final Integer [] iPlace = placePermuts[i]; // e.g. @16:12,8,4,0   
-            int permuteI = (depth == 0)
-                ? zeroPlaces(kmer, iPlace)
-                : zeroPlaces(permute, iPlace);
-            if (false && debug && depth == 0) {
-                print("zero: %d %d %s %s %s\n", 
-                      depth, 
-                      i,
-                      Arrays.asList(iPlace),
-                      permute, 
-                      Base4er.decode(permuteI, d));
-            }
-            for (int b = 0; b < base ; ++b) {
-                // todo check an int array first?
-                int permuteIB = permuteBase4(permuteI, 
-                                             iPlace[b]);
-                // add at ANY depth? not just hamming?
-                if (!exactDistance || 
-                    (depth + 1 == d.hamming
-                    && exactHamming(d, kmer, permuteIB))) {
-                    kPerms.add(permuteIB);
-                    check.add(permuteIB);
-                    checkCt++;
-                }
-                if (depth + 1 < d.hamming) {
-                    // recur
-                    nextKmerRelatives(kmer, 
-                                      i + 1,             
-                                      permuteIB, 
-                                      kPerms,
-                                      exactDistance);
-                }
-            }
-            if (false && debug && kPerms.size() < 500)
-                print("ct: %d %d\n", check.size(), checkCt);
-        }
-    }
-
-    int count = 0;
-
-    // 
-
-    int permuteBase4(int kmerZero, int ... kmerPlace) {
-        int perm = kmerZero;
-        for (int p : kmerPlace) {
-            perm |= p;
-        }
-        return kmerZero + kmerPlace[0];
-    }
-
-    // before permute
-    int zeroPlaces(int kmer, Integer [] place) {
-        int perm = kmer;
-        for (int p : place) {
-            if ((perm & p) > 0) {
-                perm -= p;
-            }
-        }
-        return perm;
-    }
-
-
-    boolean exactHamming(FastKmerSearchData d, 
-                         int kmer, int kmerNeighbor) {
-        int diff = kmer ^ kmerNeighbor;
-        if (debug && diff != 9 && ++count < 1000) {
-            print("exact %s %s %d %d %d\n", 
-                  Base4er.decode(kmer, d), 
-                  Base4er.decode(kmerNeighbor, d),
-                  kmer, kmerNeighbor, diff);
-        }
-        // different base4's?
-        int diffBase4 = 0;
-        for (int i = 0; i < d.k; ++i) {
-            diffBase4 +=
-                (d.hammingBase2High[i] & diff) > 0 
-                ||
-                (d.hammingBase2Low[i] & diff) > 0 
-                ? 1 : 0;
-        }
-        return diffBase4 == d.hamming;
-    }
-
-    // e.g. 16 kmers in i and j, 2 out of 9 pos
-
-    static void analyzeAndReport(final FastKmerSearchData d,
-                                 final KmerSearch searchTODO,
-                                 final String outputFile) throws Exception {
-        // todo Use Clump Count !
-        List<String> kmers = new LinkedList<>();
-        int n = 0;
-        for (int c : d.clumpCount) {
-            if (c >= d.clumpThreshold) {
-                kmers.add(Base4er.decode(n, d));
-            }
-            if (++n >= d.len || kmers.size() > 200) {
-                break;
-            }
-        }
-        report(d, outputFile, kmers);
-    }
-
-    static void report(final FastKmerSearchData d,
-                       final String outputFile,
-                       final List<String> kmers) throws Exception {
-        print("top %d k-mers: \n%s \n", kmers.size(), kmers);
-        print("first %d any-mers: \n%s \n", d.countKmers.size(), d.countKmers);
-        Integer [] arrCounts = Arrays.copyOfRange(d.counts,
-                                                  0, Math.max(100, d.counts.length));
-        print("first %d position counts: %s\n", arrCounts.length,
-              Arrays.asList(arrCounts));
-
-        TextFileUtil.writeKmersListPlus(
-            outputFile, // *.out in assets
-            kmers, // frequent-est k-length patterns
-            // d.countKmers.get(kmers.get(0)), // frequency
-            kmers.size(), // 
-            d.countKmers.size(), // total # k-mers
-            d.countKmers);
-
-    }
-
-    static void report(final FastKmerSearchData d,
-                       final String outputFile,
-                       final String [] kmers) throws Exception {
-        Integer [] arrCounts = Arrays.copyOfRange(d.counts,
-                                                  0, Math.max(100, d.counts.length));
-        print("first %d position counts: %s\n", arrCounts.length,
-              Arrays.asList(arrCounts));
-
-        TextFileUtil.writeKmersListPlus(
-            outputFile, // *.out in assets
-            kmers // frequent-est k-length patterns
-        // d.countKmers.get(kmers.get(0)), // frequency
-        );
-
-    }
-
+    
 }
