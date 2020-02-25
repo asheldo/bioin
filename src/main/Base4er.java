@@ -20,6 +20,12 @@ public class Base4er extends Processor {
         return pows;
     }
 
+    static double LOG10_2 = Math.log10(2);
+    
+    static double log2(double p) {
+        return p == 0 ? 0 : Math.log10(p) / LOG10_2;
+    }
+    
     // 0 in a place is not wasted space!
     static Integer [][] powPerms() {
         Integer powPerms[][] = new Integer [pow4s.length][BASE];
@@ -151,6 +157,13 @@ public class Base4er extends Processor {
                                    final FastKmerSearchData d)
     {
         return decode(nn, d.k);
+    }
+    
+    public static String [] decode(final int [] nn, 
+                                   final int k)
+    {
+        List<Integer> n = new LinkedList<>();
+        return decode(n, k);
     }
     
     public static String [] decode(final Collection<Integer> nn, 

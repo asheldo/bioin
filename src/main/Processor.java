@@ -25,6 +25,14 @@ public class Processor {
         return Arrays.asList(o);
     }
     
+    static List listD(int [] o, int fac) {
+        List<Double> dd = new ArrayList<>();
+        for (double d : o) {
+            dd.add((double)((int) (d * fac))/fac);
+        }
+        return dd;
+    }
+    
     static List listD(double [] o, int fac) {
         List<Double> dd = new ArrayList<>();
         for (double d : o) {
@@ -33,16 +41,31 @@ public class Processor {
         return dd;
     }
     
+    public static void printlnBases(int [] bases, int k) {
+        String [] decodes = Base4er.decode(bases, k);
+        // List<String> list = Arrays.asList(decodes);
+        for (String s : decodes) {
+            String r = s.replaceAll("(\\w)", "$1 ");
+            System.out.println(r);
+        }
+        
+    }
+	
 	public static void println(String m) {
 		System.out.println(m);
 	}
 	
+    public static void printif(boolean b, String m, Object ... args) {
+        print(m, args);
+    }
+    
 	public static void print(String m, Object ... args) {
         try {
           
 		    System.out.print(Sf(m, args));
         } catch (Exception e) {
-            print("error %s", e);
+            print("error %s", m);
+            e.printStackTrace(System.err);
         }
 	}
 

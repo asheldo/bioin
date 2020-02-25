@@ -77,32 +77,61 @@ public class MotifMatrix extends Processor
 
     public static void main(String [] args) {
         String [] motifs = new String [] {
-        "TCGGGGGTTTTT",
-        "CCGGTGACTTAC",
-        "ACGGGGATTTTC",
-        "TTGGGGACTTTT",
-        "AAGGGGACTTCC",
-        "TTGGGGACTTCC",
-        "TCGGGGATTCAT",
-        "TCGGGGATTCCT",
-        "TAGGGGAACTAC",
-        "TCGGGTATAACC"
+            "TCGGGGGTTTTT",
+            "CCGGTGACTTAC",
+            "ACGGGGATTTTC",
+            "TTGGGGACTTTT",
+            "AAGGGGACTTCC",
+            "TTGGGGACTTCC",
+            "TCGGGGATTCAT",
+            "TCGGGGATTCCT",
+            "TAGGGGAACTAC",
+            "TCGGGTATAACC"
         };
-        
-        // m.sourceText = motifs;
         MotifMatrix mm = create(motifs);
-        println("e, m, p, s");
-        print("%s\n s\n s\n s\n%s\n",
-            listD(mm.entropies, 10000),
-            /*
-            Base4er.decode(mm.consensusMotif, mm.k),
-            Arrays.asList(mm.positions),
-            Arrays.asList(mm.positionScores),
-            */
-            ""
-            );
-
+        List<Double> entropiesD =
+            listD(mm.entropies, 10000);
+        double eSum = sum(mm.entropies);
         
+        println("eSum, len, e, cM, pos, sco -> matrices");
+        print("%s \n%s \n %s \n%s \n%s \n%s\n",
+            eSum,
+            mm.entropies.length,
+            entropiesD,
+            Base4er.decode(mm.consensusMotif, mm.k),
+            listD(mm.positions, 1),
+            listD(mm.positionScores, 1)
+            );
+        printMatrices(mm);
+    }
+    
+    static void printMatrices(MotifMatrix mm) {
+        for (String s : mm.motifs) {
+            String r = s.replaceAll("(\\w)", "$1 ");
+            System.out.println(r);
+        }
+        println("cts");
+        for (int [] c : mm.tCounts) {
+            print("%s\n", listD(c, 1));
+        }
+        println("profiles");
+        for (double [] p : mm.profiles) {
+            print("%s\n", listD(p, 10000));
+        }
+        double e =  -(8*0.1*log2(0.1) + 4*0.2*log2(0.2) + 2*0.3*log2(0.3) + 3*0.4*log2(0.4) + 1*0.5*log2(0.5) + 2*0.6*log2(0.6) + 2*0.7*log2(0.7) + 1*0.8*log2(0.8) + 3*0.9*log2(0.9));
+        print("%s\n", e);
+    }
+    
+    static double log2(double p) {
+        return Base4er.log2(p);
+    }
+    
+    static double sum(double [] d) {
+        double dSum = 0;
+        for (double x : d) {
+            dSum += x;
+        }
+        return dSum;
     }
     
     static MotifMatrix create(String [] motifs) {
@@ -119,7 +148,7 @@ public class MotifMatrix extends Processor
     final FastKmerSearchData [] motifData;
 
     // Kmer Data, n x k
-    long [][] motifsMatrix;
+    // long [][] motifsMatrix;
 
     // byte only gets you to 256, short 256^2
     int [] positionScores; 
@@ -134,8 +163,10 @@ public class MotifMatrix extends Processor
     
     int consensusMotif;
     
+    final String [] motifs;
     
     MotifMatrix(String [] motifs) {
+        this.motifs = motifs;
         n = motifs.length;
         L = k = motifs[0].length();
         motifData = new FastKmerSearchData [n];
@@ -207,9 +238,12 @@ public class MotifMatrix extends Processor
         double [] entropies = new double[k];
         for (int i = 0; i < k; ++i) {
             for (int b = 0; b < Base4er.BASE; ++b) {
-                double p = profiles[i][b];
-                entropies[i] -= p > 0
-                    ? p * Math.log(p) : 0;
+                // if (b != positions[i]) 
+                {
+                    double p = profiles[i][b];
+                    entropies[i] -= (p * Base4er.log2(p));
+                    print("%s %s \n", p, listD(entropies, 100));
+                }
             }
         }
         return entropies;
@@ -217,12 +251,12 @@ public class MotifMatrix extends Processor
     
      
     int [] calcScores() {
-        // count position mismatches
+        // count position mismatches, i.e. minimize
         int [] scores = new int[k];
         for (int i = 0; i < k; ++i) {
-            Map<Double,Integer> max = new TreeMap<>();
             for (int b = 0; b < Base4er.BASE; ++b) {
-                scores[i] += b == positions[i] ? tCounts[i][b] : 0;
+                scores[i] += b != positions[i] 
+                    ? tCounts[i][b] : 0;
             }
         }
         return scores;
@@ -232,38 +266,44 @@ public class MotifMatrix extends Processor
         positions = new int[k];
         double [][] probs = new double [k][Base4er.BASE];
         Integer [][] pp = Base4er.pow4Permutations;
-        int off = pp.length - k;
-        int consensus = 0;
-        for (int i = 0; i < k; ++i) {
+        consensusMotif = 0;
+        for (int i = k - 1; i >= 0; --i) {
+            int ki = k - i - 1;
             Map<Double,Integer> max = new TreeMap<>();
             for (int b = 0; b < Base4er.BASE; ++b) {
-                probs[i][b] = (double) tCounts[i][b] / n;
-                max.put(probs[i][b], b);
+                probs[ki][b] = (double) tCounts[ki][b] / n;
+                max.put(probs[ki][b], b);
             }
-            
-            Integer [] ppk = pp[16 - off - 1];
+            Integer [] ppk = pp[i];
             int mx = new LinkedList<Integer>(max.values())
                 .get(max.size() - 1);
-            positions[i] = mx;
-            consensus += ppk[mx];
+            positions[ki] = mx;
+            consensusMotif += ppk[mx];
+        
         }
         return probs;
     }
     
     int [][] calcCounts() {
         int [][] counts = new int [k][Base4er.BASE];
-        Integer [][] pp = Base4er.pow4Permutations;
-        int off = pp.length - k;
+        Integer [][] pp = Base4er.pow4Permutations;     
+        int n = 0;
         for (FastKmerSearchData d : this.motifData) {
             int kmer = d.base4kmers[0];
-            for (int i = 0; i < k; ++i) {
-                Integer [] ppk = pp[16 - off - 1 - i];
-                for (int b = 0; b < Base4er.BASE; ++b) {
+            // printif(n == 0, "ppk for %s", kmer); 
+            for (int i = k - 1; i >= 0; --i) {
+                Integer [] ppk = pp[i];//   pp[16 - off - 1 - i];
+                // printif(n == 0, "%s \n", Arrays.asList(ppk));
+                int ki = k - i - 1;
+                for (int b = Base4er.BASE - 1; b >= 0; --b) {
                     if ((kmer & ppk[b]) == ppk[b]) {
-                        ++counts[i][b]; // a
+                        ++counts[ki][b]; // a
+                        // printif(n == 0, "%s \n", b);
+                        break;
                     }
                 }
             }
+            ++n;
         }
         return counts;
     }
