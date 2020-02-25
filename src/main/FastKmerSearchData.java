@@ -21,8 +21,8 @@ public class FastKmerSearchData extends Processor
     
     
     final int clumpThreshold;
-    final byte [] clumped;
-    final int [] clumpCount;
+    byte [] clumped;
+    int [] clumpCount;
 
     final Map<String,Integer> countKmers 
         = new LinkedHashMap<>();
@@ -35,12 +35,28 @@ public class FastKmerSearchData extends Processor
         this(text, k, L, clumpThreshold, 0);
     }
                        
+    public FastKmerSearchData(final String text, 
+                              final int k,
+                              final int L,
+                              final int clumpThreshold,
+                              final boolean initClumps) {
+        this(text, k, L, clumpThreshold, 0, initClumps);
+    }
                        
+    public FastKmerSearchData(final String text, 
+                              final int k,
+                              final int L,
+                              final int clumpThreshold,
+                              final int hammingDistance) {
+        this(text, k, L, clumpThreshold, hammingDistance, true);
+    }
+    
     public FastKmerSearchData(final String text, 
                        final int k,
                        final int L,
                        final int clumpThreshold,
-                       final int hammingDistance) {
+                       final int hammingDistance,
+                       final boolean initClumps) {
         this.text = text;
         this.len = text.length();
         this.k = k;
@@ -58,10 +74,19 @@ public class FastKmerSearchData extends Processor
         this.counts = new Integer [len - k + 1];
         
         int kmax = (int) Math.pow(4, k);
-        this.clumped = new byte [kmax];
-        this.clumpCount = new int [kmax];
-        
-        // todo this.base2 = new byte [kmax][];
+        if (initClumps && k < 16) {
+        // try  {
+            this.clumped = new byte [kmax];
+            this.clumpCount = new int [kmax];
+        /*
+        } catch (Throwable e) {
+
+        System.err.println(e.getMessage());
+        throw e;
+        }
+        */
+ 
+        }
         println("t(clump)=" + checkpoint());
     }
 }

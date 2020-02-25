@@ -150,19 +150,32 @@ public class Base4er extends Processor {
     public static String [] decode(final Collection<Integer> nn, 
                                    final FastKmerSearchData d)
     {
+        return decode(nn, d.k);
+    }
+    
+    public static String [] decode(final Collection<Integer> nn, 
+                                   final int k)
+    {
         String [] decoded = new String [nn.size()];
         int i = 0;
         for (int n : nn) {
-            decoded[i++] = decode(n, d);
+            decoded[i++] = decode(n, k);
         }
         return decoded;
     }
     
-    public static String decode(final int n, final FastKmerSearchData d)
+    public static String decode(final int n, 
+                                final FastKmerSearchData d)
+    {
+        return decode(n, d.k);
+    }
+    
+    public static String decode(final int n, 
+                                final int k)
     {
         int remain = n;
         String kmer = "";
-        for (int i = d.k - 1; i >= 0; i--) {
+        for (int i = k - 1; i >= 0; i--) {
             int place = remain / pow4s[i];
             remain -= place * pow4s[i];
             kmer += mapInt(place);

@@ -1,6 +1,7 @@
 package main;
 import java.io.*;
 import java.util.*;
+import java.util.stream.*;
 
 public class Processor {
 	
@@ -22,6 +23,14 @@ public class Processor {
 	
     static List list(Object [] o) {
         return Arrays.asList(o);
+    }
+    
+    static List listD(double [] o, int fac) {
+        List<Double> dd = new ArrayList<>();
+        for (double d : o) {
+            dd.add((double)((int) (d * fac))/fac);
+        }
+        return dd;
     }
     
 	public static void println(String m) {
