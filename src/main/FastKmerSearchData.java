@@ -74,7 +74,7 @@ public class FastKmerSearchData extends Processor
         this.counts = new Integer [len - k + 1];
         
         int kmax = (int) Math.pow(4, k);
-        if (initClumps && k < 16) {
+        if (initClumps && k < 12) {
         // try  {
             this.clumped = new byte [kmax];
             this.clumpCount = new int [kmax];
