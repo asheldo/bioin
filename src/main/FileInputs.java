@@ -93,13 +93,13 @@ public class FileInputs extends Processor {
     
     public String sourceText0 = "";
 
-    public String [] sourceText; // = new String [1];
+    public String [] sourceText = new String [1];
 
     public String epilogue = "";
 
     public String param1;
 
-    public List<String> params;
+    public List<String> params = new LinkedList<>();;
 
     public Set<String> options = new HashSet<>();
 
@@ -222,9 +222,12 @@ public class FileInputs extends Processor {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < lim; ++i) {
             String get = data.get(i);
-            if (get != null && (i > 0 ||
+            if (get == null) {
+                continue;
+            }
+            if (i > 0 ||
                     (takeParamPrefix(get)
-                    && !takePreface(get)))) 
+                    && !takePreface(get))) 
                 {
                 sb.append(data.get(i));
                 if (i < take) { // splitable
@@ -233,6 +236,14 @@ public class FileInputs extends Processor {
                 if (i % 1000 == 0) 
                     print("" + (char) ('\\' + i % 8));
             }
+            if (!paramPrefix.isPresent() &&
+                    !preface.isPresent()) {
+                        params.add(get);
+                        if (i == 0) {
+
+                            param1 = get;
+                        }
+                    }
         }
         sourceText[0] = sourceText0 = sb.toString();
     }
