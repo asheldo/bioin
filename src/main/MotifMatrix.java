@@ -106,10 +106,10 @@ public class MotifMatrix extends Processor
     }
     
     static void printMatrices(MotifMatrix mm) {
-        for (String s : mm.motifs) {
+        /*for (String s : mm.motifs) {
             String r = s.replaceAll("(\\w)", "$1 ");
             System.out.println(r);
-        }
+        }*/
         println("cts");
         for (int [] c : mm.tCounts) {
             print("%s\n", listD(c, 1));
@@ -134,24 +134,36 @@ public class MotifMatrix extends Processor
         return dSum;
     }
     
+    // and calc profile probs
     static MotifMatrix create(String [] motifs) {
         MotifMatrix mm = new MotifMatrix(motifs);
+        mm.laplace = 0;
         mm.init();
-        
+        return mm;
+    }
+    
+    // and calc profile probs with laplace 1
+    static MotifMatrix create(Integer [] motifData,
+                              int t, int L, int k,
+                              byte laplace) {
+        MotifMatrix mm = new MotifMatrix(t, L, k, motifData);
+        mm.laplace = laplace;
+        mm.init();
         return mm;
     }
     
     final int n;
     final int L;
     final int k;
+    
     // t = # of moTifs
-    final FastKmerSearchData [] motifData;
+    final Integer [] motifData;
 
     // Kmer Data, n x k
     // long [][] motifsMatrix;
 
     // byte only gets you to 256, short 256^2
-    int [] positionScores; 
+    private int [] positionScores; 
     int [] positions;
     
     int [][] tCounts; // t x k = [4][]
@@ -159,62 +171,61 @@ public class MotifMatrix extends Processor
     // could be int if we multiply by t again
     double [][] profiles; // note ceiling(t/4)
 
-    double [] entropies;
+    private double [] entropies;
     
     int consensusMotif;
     
-    final String [] motifs;
+    byte laplace;
+    
+    // final String [] motifs;
     
     MotifMatrix(String [] motifs) {
-        this.motifs = motifs;
+        // this.motifs = motifs;
         n = motifs.length;
         L = k = motifs[0].length();
-        motifData = new FastKmerSearchData [n];
+        motifData = new Integer [n];
         for (int i = 0; i < motifs.length; ++i) {
             String kmer = motifs[i];
             FastKmerSearchData d = new FastKmerSearchData(
                 kmer, k, k, 0, false
             );
-            motifData[i] = d;
+            motifData[i] = d.base4kmers[0];
         }
+    }
+    
+    MotifMatrix(final int n, final int k, final int L, 
+                final Integer [] motifData) {
+        
+        this.n = n; // motifs.length;
+        this.L = L; // = k = motifs[0].length();
+        this.k = k;
+        this.motifData = motifData; // new FastKmerSearchData [n];
     }
     
     void init() {
         this.tCounts = calcCounts();
         this.profiles = calcProfiles();
-        this.positionScores = calcScores();
-        this.entropies = calcEntropies();
-        
     }
-
-
-    /*
-    // e.g. 16 kmers in i and j, 2 out of 9 pos
-    void processMotifs(FileInputs m,
-                              final int k,
-                              final int hammingD) throws Exception {
-        final String kmer = null;
-        final int ct = m.sourceText.length;
-        for (int i = 0; i < ct; ++i) {
-            String text = m.sourceText[i];
-
-
-            FastKmerSearchData d = readSourceN(text,
-                                               k, hammingD);
-            checkpoint();
-            Motif nbrs = getKmerNeighbors(m.outputFile, 
-                                          d, Integer.MAX_VALUE,         
-                                          false, true);
-
-            nbrs.reportFrequent(d, 
-                                extension(m.outputFile, ".out"));
+    
+    public int [] scores() {
+        if (positionScores == null) {
+            positionScores = calcScores();
         }
+        return positionScores;
+    }
+    
+    public double [] entropies() {
+        if (entropies == null) {
+            entropies = calcEntropies();
+        }
+        return entropies;
+    }
+    /*
         TextFileUtil.writeKmersListPlus(
             extension(m.outputFile, ".out"),
             kmer);
     }
     */
-    
 
     /**/
 
@@ -239,17 +250,18 @@ public class MotifMatrix extends Processor
         for (int i = 0; i < k; ++i) {
             for (int b = 0; b < Base4er.BASE; ++b) {
                 // if (b != positions[i]) 
-                {
-                    double p = profiles[i][b];
-                    entropies[i] -= (p * Base4er.log2(p));
-                    print("%s %s \n", p, listD(entropies, 100));
-                }
+                double p = profiles[i][b];
+                entropies[i] -= (p * Base4er.log2(p));
+                print("%s %s \n", p, listD(entropies, 100));
             }
         }
         return entropies;
     }
     
-     
+    /** 
+     * effectively: 
+     * hamming distances for aggregated cokumn data
+     */
     int [] calcScores() {
         // count position mismatches, i.e. minimize
         int [] scores = new int[k];
@@ -271,7 +283,14 @@ public class MotifMatrix extends Processor
             int ki = k - i - 1;
             Map<Double,Integer> max = new TreeMap<>();
             for (int b = 0; b < Base4er.BASE; ++b) {
-                probs[ki][b] = (double) tCounts[ki][b] / n;
+                if (laplace > 0) {
+                    probs[ki][b] = 
+                        (double) (tCounts[ki][b] + 1) 
+                        / (n + Base4er.BASE);
+                } else {
+                    probs[ki][b] = 
+                        (double) tCounts[ki][b] / n;
+                }
                 max.put(probs[ki][b], b);
             }
             Integer [] ppk = pp[i];
@@ -288,8 +307,8 @@ public class MotifMatrix extends Processor
         int [][] counts = new int [k][Base4er.BASE];
         Integer [][] pp = Base4er.pow4Permutations;     
         int n = 0;
-        for (FastKmerSearchData d : this.motifData) {
-            int kmer = d.base4kmers[0];
+        for (int kmer : this.motifData) {
+            // int kmer = d.base4kmers[0];
             // printif(n == 0, "ppk for %s", kmer); 
             for (int i = k - 1; i >= 0; --i) {
                 Integer [] ppk = pp[i];//   pp[16 - off - 1 - i];
@@ -308,6 +327,85 @@ public class MotifMatrix extends Processor
         return counts;
     }
     
+    // must init first
+    int mostProbable(FastKmerSearchData d) {
+        double maxProb = -1.0;
+        int most = 0;
+        for (int i = 0; i < d.L - d.k + 1; ++i) {
+            double p = 1.0;
+            int kmer = d.base4kmers[i];
+            for (int ix = d.k - 1; ix >= 0; --ix) {
+                Integer [] pix = Base4er.pow4Permutations[ix];
+                for (int b = 3; b >= 0; --b) {
+                    int ppk = pix[b];
+                    if ((ppk & kmer) == ppk) {
+                        p *= profiles[d.k - ix - 1][b];
+                        break;
+                    }
+                }
+                if (p == 0) {
+                    break;
+                }
+            }
+            if (p > maxProb) {
+                maxProb = p;
+                most = kmer;
+            }
+        }
+        return most;
+    }
+/*
+    double scoreOne(int kmer, int used) {
+        double score = 0;
+        for (int s = 0; s < t; ++s) {
+            FastKmerSearchData d =
+                texts.get(s);
+            int min = Integer.MAX_VALUE;
+            int best = 0;
+            for (int ix = 0; ix < d.L - k + 1; ++ix) {
+                int h = calcHamming(kmer, d.base4kmers[ix]);
+                if (h < min) {
+                    best = ix;
+                    min = h;
+                }
+                if (h == 0) {
+                    break; // shortcircuit
+                }
+            }
+            score += min;
+            if (min == 0 && s > t/2 && score < best) {
+                print("score %d %d %d %s\n",
+                      used, kmer, k, score);
+            }
+        }
+        return score;
+    }
+
+    int count = 0;
+    boolean debug = false;
+
+    int calcHamming(int kmer, int kmerNeighbor) {
+        int diff = kmer ^ kmerNeighbor;
+
+        // different base4's?
+        int diffBase4 = 0;
+        for (int i = 0; i < k; ++i) {
+            diffBase4 +=
+                (base2High[i] & diff) > 0 
+                ||
+                (base2Low[i] & diff) > 0 
+                ? 1 : 0;
+        }
+        if (debug && diff != 9 && ++count < 1000) {
+            print("exact %s %s %s %d %d %d\n", 
+                  diffBase4,
+                  Base4er.decode(kmer, k), 
+                  Base4er.decode(kmerNeighbor, k),
+                  kmer, kmerNeighbor, diff);
+        }
+        return diffBase4;
+    }
+    */
     /*
     boolean exactHamming(FastKmerSearchData d, 
                          int kmer, int kmerNeighbor) {

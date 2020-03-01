@@ -166,6 +166,12 @@ public class Base4er extends Processor {
         return decode(n, k);
     }
     
+    public static List<String> decodeList(final Collection<Integer> nn, 
+                                          final int k)
+    {
+        return Arrays.asList(decode(nn, k));
+    }
+    
     public static String [] decode(final Collection<Integer> nn, 
                                    final int k)
     {

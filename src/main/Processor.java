@@ -13,6 +13,14 @@ public class Processor {
         return t - t0;
     }
     
+    public static int sum(int [] i) {
+        int sum = 0;
+        for (int n : i) {
+            sum  += n;
+        }
+        return sum;
+    }
+    
     public static String extension(String file, String outExt) {
         return file.replaceAll("\\.[^.]*$", outExt);
     }
