@@ -64,7 +64,7 @@ public class Processor {
 	}
 	
     public static void printif(boolean b, String m, Object ... args) {
-        print(m, args);
+        if (b) print(m, args);
     }
     
 	public static void print(String m, Object ... args) {

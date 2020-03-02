@@ -164,6 +164,8 @@ public class MotifMatrix extends Processor
 
     // byte only gets you to 256, short 256^2
     private int [] positionScores; 
+    int scoreSum;
+    
     int [] positions;
     
     int [][] tCounts; // t x k = [4][]
@@ -210,6 +212,7 @@ public class MotifMatrix extends Processor
     public int [] scores() {
         if (positionScores == null) {
             positionScores = calcScores();
+            scoreSum = sum(positionScores);
         }
         return positionScores;
     }
@@ -354,6 +357,18 @@ public class MotifMatrix extends Processor
         }
         return most;
     }
+
+    @Override
+    public String toString() {
+        return String.format("mm:\n %s %s %s %s \n", 
+              Base4er.decode(consensusMotif, k),
+              scoreSum,
+              listD(positionScores, 1),
+              Arrays.asList(Base4er.decode(
+                  Arrays.asList(motifData), k)));
+    }
+   
+    
 /*
     double scoreOne(int kmer, int used) {
         double score = 0;
