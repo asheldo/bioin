@@ -335,21 +335,8 @@ public class MotifMatrix extends Processor
         double maxProb = -1.0;
         int most = 0;
         for (int i = 0; i < d.L - d.k + 1; ++i) {
-            double p = 1.0;
             int kmer = d.base4kmers[i];
-            for (int ix = d.k - 1; ix >= 0; --ix) {
-                Integer [] pix = Base4er.pow4Permutations[ix];
-                for (int b = 3; b >= 0; --b) {
-                    int ppk = pix[b];
-                    if ((ppk & kmer) == ppk) {
-                        p *= profiles[d.k - ix - 1][b];
-                        break;
-                    }
-                }
-                if (p == 0) {
-                    break;
-                }
-            }
+            double p = oneP(kmer);
             if (p > maxProb) {
                 maxProb = p;
                 most = kmer;
@@ -358,6 +345,52 @@ public class MotifMatrix extends Processor
         return most;
     }
 
+    /** normalized (to 1.0) */
+    public MotifMatrix probDist(double randProb,
+                                int kmerRowIndex, 
+                                int [] base4kmers) {
+        int max = L - k + 1;
+        double div = 0.0;
+        double [] probs = new double [max + 1];
+        for (int i = 0; i < max; ++i) {
+            int kmer = base4kmers[i];
+            double p = oneP(kmer);
+            probs[i] = p;
+            div += p;
+        }
+        int i = 0;
+        for (double p : probs) {
+            p /= div;
+            randProb -= p;
+            if (p <= 0) {
+                break;
+            }
+            ++i;
+        }
+        
+        Integer [] nextMotifs = Arrays.copyOf(motifData, motifData.length);
+        nextMotifs[kmerRowIndex] = base4kmers[i];
+        return create(nextMotifs, n, L, k, laplace); 
+    }
+
+    private double oneP(int kmer) {
+        double p = 1.0;
+        for (int ix = k - 1; ix >= 0; --ix) {
+            Integer [] pix = Base4er.pow4Permutations[ix];
+            for (int b = 3; b >= 0; --b) {
+                int ppk = pix[b];
+                if ((ppk & kmer) == ppk) {
+                    p *= profiles[k - ix - 1][b];
+                    break;
+                }
+            }
+            if (p == 0) {
+                break;
+            }
+        }
+        return p;
+    }
+    
     @Override
     public String toString() {
         return String.format("mm:\n %s %s %s %s \n", 
