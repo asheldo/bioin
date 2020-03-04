@@ -349,9 +349,9 @@ public class MotifMatrix extends Processor
     public MotifMatrix probDist(double randProb,
                                 int kmerRowIndex, 
                                 int [] base4kmers) {
-        int max = L - k + 1;
+        int max = base4kmers.length - k + 1;
         double div = 0.0;
-        double [] probs = new double [max + 1];
+        double [] probs = new double [max];
         for (int i = 0; i < max; ++i) {
             int kmer = base4kmers[i];
             double p = oneP(kmer);
@@ -359,16 +359,21 @@ public class MotifMatrix extends Processor
             div += p;
         }
         int i = 0;
+        
         for (double p : probs) {
-            p /= div;
-            randProb -= p;
-            if (p <= 0) {
+            double pD = p / div;
+            randProb -= pD;
+            if (randProb <= 0.0) {
+                printif(false, "p %s\n", listD(probs, 1000));
+                printif(false, " = %s\n", i);
+ 
                 break;
             }
             ++i;
         }
         
-        Integer [] nextMotifs = Arrays.copyOf(motifData, motifData.length);
+        Integer [] nextMotifs = 
+            Arrays.copyOf(motifData, motifData.length);
         nextMotifs[kmerRowIndex] = base4kmers[i];
         return create(nextMotifs, n, L, k, laplace); 
     }

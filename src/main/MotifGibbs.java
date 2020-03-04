@@ -4,13 +4,14 @@ import java.util.*;
 
 public class MotifGibbs extends Processor
 {
-    private static int simulations = 100000;
+    private static int simulations = 1700,
+            reps = 20;
 
-    private static int stuck = 2999;
+    private static int stuck = 9999;
 
-    private static int stuckMin = 999;
+    private static int stuckMin = 9999;
 
-    private static int seed = 123456;
+    private static int seed = 999;
 
     Random rand = new Random(seed);
 
@@ -20,7 +21,7 @@ public class MotifGibbs extends Processor
         print("inputs: %s \n", m.params);
         if (m.params != null) {
             int k = Integer.parseInt(m.params.get(0));
-            int t = Integer.parseInt(m.params.get(1));
+            // int t = Integer.parseInt(m.params.get(1));
 
             // START HERE
 
@@ -37,25 +38,23 @@ public class MotifGibbs extends Processor
         mg.initMatrix();
 
         checkpoint();
-        Integer [] best; // = mg.searchAll(simulations);
-
-        if (m.options.contains("gibbs")) {
-            println("Motif.gibbs");
-            best = mg.searchAll(simulations);
-
-        } else {
-            println("Motif.rand");
-            best = mg.searchAll(simulations);
-        }
-        print("med: %s %s\n",
-              mg.best, // score
-              Base4er.decode(mg.bestKmer, mg.k)
-              );
-
+        Integer [] best;
+        // if (m.options.contains("gibbs")) {
+        print("Motif.gibbs %s %s\n",
+                reps, simulations);
+        // simulations = 1000
+        MotifMatrix mm = mg.searchAll(reps);
+        best = mm.motifData;
+        int bestKmer = mm.consensusMotif;
+       
+        print("med %s of: %s\n",
+              Base4er.decode(bestKmer, mg.k),
+              Base4er.decode(Arrays.asList(best), 
+                  mg.k));
         TextFileUtil.writeKmersListPlus(
             m.outputFile,
             Base4er.decode(Arrays.asList(best), 
-                           mg.k));
+                mg.k));
     }
 
     //
@@ -70,15 +69,11 @@ public class MotifGibbs extends Processor
     List<FastKmerSearchData> texts =
     new LinkedList<>();
 
-    // double [] kmers;
-
-    double best = Double.MAX_VALUE;
     int bestKmer;
     int [] bestMotifs;
     double score;
 
     byte laplace;
-
 
     //
     MotifGibbs(byte laplace) {
@@ -112,7 +107,7 @@ public class MotifGibbs extends Processor
     }
 
     int randK() {
-        return rand.nextInt(L - k);
+        return rand.nextInt(L - k + 1);
     }
 
     Integer [] randMatrix() {
@@ -135,47 +130,57 @@ public class MotifGibbs extends Processor
      if Score(Motifs) < Score(BestMotifs)
      BestMotifs ← Motifs
      */
-    Integer [] searchAll(int sims) { 
+    MotifMatrix searchAll(int sims) { 
         boolean debug = false;
-        checkpoint();
-        Integer [] motifData = randMatrix();
-        MotifMatrix mm = MotifMatrix.create(
-            motifData, t, k, k, laplace);
-        MotifMatrix bestMm = mm;
-        bestMm.scores();
-        print("init %d: %s", simulations, bestMm);
-
+        
         int trend = 0;
         int memory = 0;
+        MotifMatrix bestMm = null;
         while (true) {
-            mm = searchOne(motifData);
+            checkpoint();
+            Integer [] motifData = randMatrix();
+            /*
+            MotifMatrix mm = MotifMatrix.create(
+                motifData, t, k, k, laplace);
             mm.scores();
-            --simulations;
-            int diff = mm.scoreSum - bestMm.scoreSum;
+            if (bestMm == null 
+                || mm.scoreSum < bestMm.scoreSum) {
+                    bestMm = mm;
+            }
+            printif(debug, "next init %d: %s", sims, bestMm);
+            */
+            MotifMatrix mm = searchOne(motifData);
+            mm.scores();
+            --sims;
+            
+            int diff = bestMm == null ? -1 : mm.scoreSum - bestMm.scoreSum;
             if (diff < 0) {
                 memory = trend = 0; //reset
                 bestMm = mm;
-                print("next %d sim: %s", simulations, bestMm);
+                print("next %d sim: %s\n", sims, bestMm);
             } else if (diff == 0) {
                 ++memory;
-                print("indiff %d sim: %s == %s",
+                print("indiff %d sim: %s == %s\n",
                       simulations , bestMm.scoreSum , mm);
             } else {
                 ++trend;
-                printif(debug, "noop: %s < %s",
+                printif(debug, "noop: %s < %s\n",
                         bestMm.scoreSum , mm);
             }
-            if (simulations == 0 
-                || trend > stuck
-                || memory > stuckMin) break;
-            motifData = randMatrix();
-            // mm = MotifMatrix.create( motifData, t, k, k, laplace);
-            // mm.scores();
+            if (sims == 0 
+                    || trend > stuck
+                    || memory > stuckMin) {
+                printif(debug, "end %s %s\n", trend, memory);
+                break;
+            }
+            // motifData = randMatrix();
+            
         }
 
-        print("final %d @ %s: %s", simulations, 
-              checkpoint(), bestMm);
-        return bestMm.motifData;
+        print("final %d @ %s: %s\n", simulations, 
+              checkpoint(), bestMm,
+              Arrays.asList(bestMm.motifData));
+        return bestMm;
     }
 
     int depth = 1;
@@ -186,12 +191,13 @@ public class MotifGibbs extends Processor
             motifData,
             t, k, k, laplace);
         mm.scores();
-
+        MotifMatrix bestMm = mm;
         int i = 0;
         Integer [] d = new Integer [0];
         // FastKmerSearchData line1 = texts.get(0);
         // for (int i = 0; i < L - k + 1; ++i) 
-        while (true) {
+        while (bestMm.scoreSum > 0 && i < simulations) 
+        {
             ++i;
             // (int j = 0; j < t; ++j) {
             // form Profile from motifs Motif1, …, Motifi - 1
@@ -201,22 +207,23 @@ public class MotifGibbs extends Processor
             double pr = rand.nextDouble();
             int kmersRowIndex = rand.nextInt(t);
             
-            int [] kmersRow = texts.get(0).base4kmers;
-            MotifMatrix nextMm = 
-                mm.probDist(pr, kmersRowIndex, kmersRow);
-            nextMm.scores();
-            if (nextMm.scoreSum < mm.scoreSum) {
-                mm = nextMm;
+            int [] kmersRow = texts.get(kmersRowIndex)
+                .base4kmers;
+            mm = mm.probDist(pr, kmersRowIndex, kmersRow);
+            mm.scores();
+            
+            if (mm.scoreSum < bestMm.scoreSum) {
+                bestMm = mm;
                 if (i > depth) {
                     depth = i;
-                    print("search %d next: %s", i, nextMm);
+                    print("search %d next: %s", i, bestMm);
                 }
             } else {
-                printif(debug, "not: %s");
-                break;
-            }
-        }
-        return mm;
+                printif(debug, "not: %s", bestMm.scoreSum);
+                // if (--simulations == 0) break;
+            } 
+        } 
+        return bestMm;
     }
 
 

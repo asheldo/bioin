@@ -2,6 +2,7 @@ package main;
 
 import java.io.*;
 import java.util.*;
+import java.util.stream.*;
 
 public class TextFileUtil {
 	
@@ -44,8 +45,20 @@ public class TextFileUtil {
 		try {
 			FileWriter fw = new FileWriter(filePath);
 			for (Object out : outs) {
-			    fw.write(out == null 
-                    ? "null" : out.toString());
+                if (out instanceof Iterable) {
+                    Iterator i = ((Iterable) out).iterator();
+                    while (true) {
+                        fw.write(i.next());
+                        if (i.hasNext()) {
+                            fw.write("\n");
+                        } else {
+                            break;
+                        }
+                    }
+                } else 
+			        fw.write(out == null 
+                    ? "null" 
+                    : out.toString().replaceAll("[, ]", "\n"));
 				fw.write("\n");
 			}
 			fw.flush();
