@@ -108,8 +108,13 @@ public class FileInputs extends Processor {
     public String outputFile;
     
     private final boolean hasParamPrefix;
-
-    FileInputs() {
+    
+    public FileInputs(String outputFile) {
+        this();
+        this.outputFile = outputFile;
+    }
+    
+    public FileInputs() {
         this(false);
     }
     

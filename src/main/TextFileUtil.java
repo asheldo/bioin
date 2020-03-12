@@ -3,6 +3,7 @@ package main;
 import java.io.*;
 import java.util.*;
 import java.util.stream.*;
+import org.apache.commons.codec.binary.*;
 
 public class TextFileUtil {
 	
@@ -34,16 +35,24 @@ public class TextFileUtil {
     static void writeLists(
         List ... outs) throws Exception
 	{
-        
-        
+
+    }
+
+    public static void writeKmersListPlus(
+                                        final String filePath,
+                                        final Object ... outs) throws Exception{
+        writeKmersListPlus("", new FileInputs(filePath),
+            outs);
     }
     
 	public static void writeKmersListPlus(
-        final String filePath,
+        final String delim,
+        final FileInputs fileInputs,
 	    Object ... outs) throws Exception
+	
 	{
-		try {
-			FileWriter fw = new FileWriter(filePath);
+        try {
+			FileWriter fw = new FileWriter(fileInputs.outputFile);
 			for (Object out : outs) {
                 if (out instanceof Iterable) {
                     Iterator i = ((Iterable) out).iterator();
@@ -57,8 +66,9 @@ public class TextFileUtil {
                     }
                 } else 
 			        fw.write(out == null 
-                    ? "null" 
-                    : out.toString().replaceAll("[, ]", "\n"));
+                        ? "null" : delim == "" 
+                        ? out.toString()
+                        : out.toString().replaceAll("[, ]", "\n"));
 				fw.write("\n");
 			}
 			fw.flush();

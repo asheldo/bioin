@@ -42,8 +42,8 @@ public class StringComp extends Processor
         List<Node> debruijn = composer.graphGlue(); // sorted
         
         String out = adjacencyOut(debruijn);
-        TextFileUtil.writeKmerString(
-            fis.outputFile, 
+        TextFileUtil.writeKmersListPlus("",
+            fis, 
             // graph,
             out);
     }
@@ -56,8 +56,8 @@ public class StringComp extends Processor
         List<Node> debruijn = composer.graphGlue(); // sorted
         
         String out = adjacencyOut(debruijn);
-        TextFileUtil.writeKmerString(
-            fis.outputFile, 
+        TextFileUtil.writeKmersListPlus("",
+            fis, 
             // graph,
             out);
     }
@@ -100,8 +100,8 @@ public class StringComp extends Processor
             new StringComp(convert(kmers));
         List<Node> graph = composer.graph(false);
         String out = adjacencyOut(graph);
-        TextFileUtil.writeKmerString(
-            fis.outputFile, 
+        TextFileUtil.writeKmersListPlus("",
+            fis,
             // graph,
             out);
     }
