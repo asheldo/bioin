@@ -13,6 +13,23 @@ public class Processor {
         return t - t0;
     }
     
+    public static long t() {
+        return System.currentTimeMillis();
+    }
+    
+    
+    public static List<Integer> toInt(String ... ss) {
+        List<Integer> is = new LinkedList<>();
+        for (String s : ss) {
+            is.add(Integer.parseInt(s));
+        }
+        return is;
+    }
+    
+    public static Integer toInt(String s) {
+        return Integer.parseInt(s);
+    }
+    
     public static int sum(int [] i) {
         int sum = 0;
         for (int n : i) {

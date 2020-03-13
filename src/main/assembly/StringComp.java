@@ -3,6 +3,7 @@ package main.assembly;
 import main.Processor;
 import main.*;
 import java.util.*;
+import java.util.concurrent.*;
  
 
 // https://stepik.org/lesson/196/?unit=8239
@@ -12,7 +13,9 @@ public class StringComp extends Processor
         String f = "2_1/dataset.txt";
         FileInputs fis = 
             FileInputs.scanFileInputs(f);
-        if (fis.options.contains("debk")) {
+        if (fis.options.contains("euler")) {
+            euler(fis);
+        } else if (fis.options.contains("debk")) {
             debruijnKmers(fis);
         } else if (fis.options.contains("debr")) {
             debruijn(fis);
@@ -54,12 +57,123 @@ public class StringComp extends Processor
         StringComp composer =
             new StringComp(convert(fis.params));
         List<Node> debruijn = composer.graphGlue(); // sorted
-        
+
         String out = adjacencyOut(debruijn);
         TextFileUtil.writeKmersListPlus("",
+                                        fis, 
+                                        // graph,
+                                        out);
+    }
+    
+    static class IntNode {
+        Integer l; //value
+        
+        List<Integer> rs = new LinkedList<>();
+        
+        IntNode(String l, String ... rs) {
+            this.l = toInt(l);
+            for (String r : rs) {
+                this.rs.add(toInt(r));
+            }
+        }
+    }
+    
+    /*
+     EulerianCycle(Graph)
+     form a cycle Cycle by randomly walking in Graph (don't visit the same edge twice!)
+     while there are unexplored edges in Graph
+     select a node newStart in Cycle with still unexplored edges
+     form Cycle’ by traversing Cycle (starting at newStart) and then randomly walking 
+     Cycle ← Cycle’
+     return Cycle
+     */
+    static void euler(final FileInputs fis) throws Exception {
+        int n = fis.params.size();
+        Random rnd = new Random();
+        println("" + n + " @" + checkpoint());
+        List<Integer> euler = new LinkedList<Integer>();
+        IntNodeMap cloner = readAdj(fis);
+        IntNodeMap adj = cloner.clone();
+        int pick = rnd.nextInt(adj.size());
+        Map.Entry<Integer,List<Integer>> start
+            = adj.getEntry(pick);
+        List<Integer> outs = start.getValue();
+        Integer in = start.getKey();
+        long t = t();
+        int i = 0;
+        while (true) {
+            int sz = adj.size();
+            if (t() - t > 60000L) {
+                throw new TimeoutException("60s");
+            // } else if (t() - t > 50L) {
+            } else if ((++i) % 250 == 0) {
+                println(pick + " = " + outs.toString() + " .. " + euler);
+            }
+            euler = new LinkedList<Integer>();
+            euler.add(in);
+            while (outs != null && !outs.isEmpty()) {
+                // random step
+                pick = outs.remove(rnd.nextInt(outs.size()));
+                if (outs.isEmpty()) {
+                    adj.remove(in);
+                    --sz;
+                }
+                in = pick;
+                outs = adj.get(pick);
+                euler.add(in);
+            }
+            if (sz == 0) {
+                break;
+            }
+            // println("... " + adj.toString() + " .. " + euler);
+            
+            in = adj.getEntry(rnd.nextInt(sz))
+                .getKey();
+            adj = cloner.clone(); // readAdj(fis);
+            outs = adj.getEntry(in).getValue();
+        }
+        String out = eulerPathOut(euler);
+        TextFileUtil.writeKmersListPlus("",
             fis, 
-            // graph,
             out);
+    }
+
+    static class IntNodeMap extends LinkedHashMap<Integer,List<Integer>> {
+        Map.Entry<Integer,List<Integer>> getEntry(int n) {
+            Iterator<Map.Entry<Integer,List<Integer>>> e = 
+                entrySet().iterator();
+            while (e.hasNext()) {
+                Map.Entry<Integer,List<Integer>> x =
+                    e.next();
+                if (0 == n--) {
+                    return x;
+                }
+            }
+            return null;
+        }
+
+        @Override
+        public IntNodeMap clone()
+        {
+            IntNodeMap copy = (IntNodeMap) super.clone();
+            for (Map.Entry e : copy.entrySet()) {
+                List<Integer> list = (List<Integer>) e.getValue();
+                e.setValue(new LinkedList<>(list));
+            }
+            return copy;
+        }
+       
+    }
+    
+    private static IntNodeMap readAdj(FileInputs fis)
+    {
+        IntNodeMap map = new IntNodeMap<>();
+        for (String adj : fis.params) {
+            String [] l = adj.split(" -> ");
+            String [] rs = l[1].split(",");
+            map.put(toInt(l[0]), toInt(rs));
+        }
+        return map;
     }
     
     static void decomp(FileInputs fis) throws Exception {
@@ -106,6 +220,22 @@ public class StringComp extends Processor
             out);
     }
 
+    static String eulerPathOut(List<Integer> graph) {
+        print("t=%d\n", checkpoint());
+        StringBuilder out = new StringBuilder();
+        for (Integer n : graph) {
+            if (out.length() > 0) {
+                out.append("->");
+            }
+            out.append(n);
+        }
+        print("o-t=%d\n", checkpoint());
+        if (out.length() < 500) {
+            println(out.toString());
+        }
+        return out.toString();
+    }
+    
     static String adjacencyOut(List<Node> graph) {
         print("t=%d\n", checkpoint());
         String out = "";
