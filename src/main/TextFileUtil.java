@@ -52,8 +52,12 @@ public class TextFileUtil {
 	
 	{
         try {
+            int n = 0;
 			FileWriter fw = new FileWriter(fileInputs.outputFile);
 			for (Object out : outs) {
+                if (n++ > 0) {
+                    fw.write("\n");
+                }
                 if (out instanceof Iterable) {
                     Iterator i = ((Iterable) out).iterator();
                     while (true) {
@@ -64,12 +68,12 @@ public class TextFileUtil {
                             break;
                         }
                     }
-                } else 
+                } else {
 			        fw.write(out == null 
                         ? "null" : delim == "" 
                         ? out.toString()
                         : out.toString().replaceAll("[, ]", "\n"));
-				fw.write("\n");
+				}
 			}
 			fw.flush();
 			fw.close();

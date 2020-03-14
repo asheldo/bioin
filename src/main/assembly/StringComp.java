@@ -78,13 +78,15 @@ public class StringComp extends Processor
         }
     }
     
-    /*
+    /* yeah right
      EulerianCycle(Graph)
-     form a cycle Cycle by randomly walking in Graph (don't visit the same edge twice!)
+     form a cycle Cycle by randomly walking in Graph 
+     (don't visit the same edge twice!)
      while there are unexplored edges in Graph
-     select a node newStart in Cycle with still unexplored edges
-     form Cycle’ by traversing Cycle (starting at newStart) and then randomly walking 
-     Cycle ← Cycle’
+       select a node newStart in Cycle with still unexplored edges
+       form Cycle’ by traversing Cycle (starting at newStart)
+       and then randomly walking 
+       Cycle ← Cycle’
      return Cycle
      */
     static void euler(final FileInputs fis) throws Exception {
@@ -93,45 +95,44 @@ public class StringComp extends Processor
         println("" + n + " @" + checkpoint());
         List<Integer> euler = new LinkedList<Integer>();
         IntNodeMap cloner = readAdj(fis);
-        IntNodeMap adj = cloner.clone();
-        int pick = rnd.nextInt(adj.size());
+        int pick = rnd.nextInt(cloner.size());
         Map.Entry<Integer,List<Integer>> start
-            = adj.getEntry(pick);
+            = cloner.getEntry(pick);
         List<Integer> outs = start.getValue();
         Integer in = start.getKey();
         long t = t();
         int i = 0;
-        while (true) {
-            int sz = adj.size();
-            if (t() - t > 60000L) {
-                throw new TimeoutException("60s");
-            // } else if (t() - t > 50L) {
-            } else if ((++i) % 250 == 0) {
-                println(pick + " = " + outs.toString() + " .. " + euler);
-            }
+        try {
             euler = new LinkedList<Integer>();
-            euler.add(in);
-            while (outs != null && !outs.isEmpty()) {
-                // random step
-                pick = outs.remove(rnd.nextInt(outs.size()));
+            LinkedList<Integer> stack = 
+                new LinkedList<Integer>();
+            while (true) {
                 if (outs.isEmpty()) {
-                    adj.remove(in);
-                    --sz;
+                    // adj.remove(in);
+                    euler.add(in);
+                    in = stack.pop();
+                    outs = cloner.get(in);
+                    // --sz;
+                    if (stack.isEmpty()) {
+                        euler.add(start.getKey());
+                        break;
+                    }
+                    continue;
                 }
-                in = pick;
-                outs = adj.get(pick);
-                euler.add(in);
+                // random step
+                stack.push(in);
+                in = outs.remove(rnd.nextInt(outs.size()));
+                outs = cloner.get(in);
+                if (t() - t > 120000L) {             
+                    throw new TimeoutException("60s");
+                } else if ((++i) % 500 == 0) {
+                    println(in + " = " + outs.toString() + " .. " + euler + " ... " + stack);
+                }
             }
-            if (sz == 0) {
-                break;
-            }
-            // println("... " + adj.toString() + " .. " + euler);
-            
-            in = adj.getEntry(rnd.nextInt(sz))
-                .getKey();
-            adj = cloner.clone(); // readAdj(fis);
-            outs = adj.getEntry(in).getValue();
+        } catch (Exception ex) {
+            ex.printStackTrace(System.err);
         }
+        Collections.reverse(euler);
         String out = eulerPathOut(euler);
         TextFileUtil.writeKmersListPlus("",
             fis, 
