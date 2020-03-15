@@ -4,17 +4,22 @@ import main.Processor;
 import main.*;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.function.*;
  
 
 // https://stepik.org/lesson/196/?unit=8239
 public class StringComp extends Processor
 {
     public static void main(String [] args) throws Exception {
-        String f = "2_1/dataset.txt";
+        String f = "2_2/dataset-eup.txt";
         FileInputs fis = 
             FileInputs.scanFileInputs(f);
         if (fis.options.contains("euler")) {
             euler(fis);
+        } else if (fis.options.contains("p")) {
+            euler0(fis, true);
+        } else if (fis.options.contains("euler0")) {
+            euler0(fis, false);
         } else if (fis.options.contains("debk")) {
             debruijnKmers(fis);
         } else if (fis.options.contains("debr")) {
@@ -139,7 +144,85 @@ public class StringComp extends Processor
             out);
     }
 
+    static void euler0(final FileInputs fis, 
+                       final boolean isPath) throws Exception {
+        int n = fis.params.size();
+        
+        println("" + n + " @" + checkpoint());
+        List<Integer> euler = eulerCycle(fis, isPath);
+        // Collections.reverse(euler);
+        String out = eulerPathOut(euler);
+        TextFileUtil.writeKmersListPlus("",
+                                        fis, 
+                                        out);
+    }
+
+    static List<Integer> eulerCycle(FileInputs fis,
+                                    final boolean isPath) {
+        List<Integer> euler = new LinkedList<Integer>();
+        IntNodeMap cloner = readAdj(fis);
+        int sz = cloner.size();
+        Random rnd = new Random();
+        Integer in;
+        
+        if (isPath) {
+            cloner.start(+1);
+            in = cloner.start;  // Map.Entry<Integer,List<Integer>> start = cloner.getEntry(in);
+            if (cloner.get(cloner.end) == null) {
+                cloner.put(cloner.end, new LinkedList<Integer>());
+            }
+            cloner.get(cloner.end).add(cloner.start);
+        } else {
+            int pick = rnd.nextInt(cloner.size());
+            Map.Entry<Integer,List<Integer>> start
+                = cloner.getEntry(pick);
+            in = start.getKey();
+        }
+        List<Integer> outs = cloner.get(in);
+        euler.add(in);
+        
+        int i = 0;
+        while (true) {
+            if (outs.isEmpty()) {
+                --sz;
+                if (sz == 0) 
+                    break;
+                for (int ix = 0; ix < euler.size(); ++ix)
+                {
+                    if (cloner.get(euler.get(ix)).size() > 0)
+                    {
+                        LinkedList<Integer> stack = 
+                            new LinkedList<Integer>();
+                        stack.addAll(euler.subList(ix, euler.size()));
+                        stack.addAll(euler.subList(1, ix));
+                        stack.add(euler.get(ix));
+                        euler = stack;
+                        outs = cloner.get(euler.get(euler.size() - 1));
+                        break;
+                    }
+                }
+            }
+            if (outs.size() == 0) {
+                if (isPath) euler = cloner.pathFromStart(euler);
+                break;
+            }
+            // random step
+            in = outs.remove(rnd.nextInt(outs.size()));
+            euler.add(in);
+            outs = cloner.get(in);
+            if ((++i) % 1000 == 0) {
+                println(in + " = " + outs.toString() + " .. " + euler);
+            }
+        }
+        
+        return euler;
+    }
+    
     static class IntNodeMap extends LinkedHashMap<Integer,List<Integer>> {
+        
+        int start = -1;
+        int end = -1;
+        
         Map.Entry<Integer,List<Integer>> getEntry(int n) {
             Iterator<Map.Entry<Integer,List<Integer>>> e = 
                 entrySet().iterator();
@@ -153,14 +236,78 @@ public class StringComp extends Processor
             return null;
         }
 
-        @Override
-        public IntNodeMap clone()
-        {
-            IntNodeMap copy = (IntNodeMap) super.clone();
-            for (Map.Entry e : copy.entrySet()) {
-                List<Integer> list = (List<Integer>) e.getValue();
-                e.setValue(new LinkedList<>(list));
+        void start(final int outBias) {
+            Iterator<Map.Entry<Integer,List<Integer>>> outs = 
+                entrySet().iterator();
+            final IntNodeMap in = invert(); // vs out
+            TreeSet<Integer> ks = new TreeSet<Integer>();
+            ks.addAll(in.keySet());
+            ks.addAll(keySet());
+            for (Integer k : ks) {
+                int outDiff = diff(k, in);
+                if (outDiff == outBias) {
+                    start = k;
+                } else if (outDiff == -outBias) {
+                    end = k;
+                }
             }
+        }
+        
+        int diff(int k, IntNodeMap in) {
+            if (get(k) == null) {
+                return -in.get(k).size();
+            }
+            if (in.get(k) == null) {
+                return get(k).size();
+            }
+            return get(k).size() - in.get(k).size();
+        }
+        
+        List<Integer> pathFromStart(final List<Integer> euler) {
+            if (end == euler.get(euler.size() - 2) && start == euler.get(0)) {
+                return euler.subList(0, euler.size() - 1);
+            }
+            int n = -1;
+            while (++n < euler.size()) {
+                if (end == euler.get(n) && start == euler.get(n+1)) {
+                    break;
+                }
+            }
+            List<Integer> stack = euler.subList(n + 1, euler.size() - 1);
+            stack.addAll(euler.subList(0, n + 1));
+            return stack;
+        }
+        
+        @Override
+        public IntNodeMap clone() {
+            return copy(false);
+        }
+        
+        IntNodeMap copy(final boolean keysOnly) {
+            final IntNodeMap copy = new IntNodeMap();
+            forEach(new BiConsumer<Integer,List<Integer>>() {
+                    public void accept(Integer k, List<Integer> v) {
+                        List<Integer> vals = new LinkedList<>();
+                        if (!keysOnly) vals.addAll(v);
+                        copy.put(k, vals);
+                    }
+                });
+            return copy;
+        }
+        
+        public IntNodeMap invert() {
+            final IntNodeMap copy = copy(true);
+            forEach(new BiConsumer<Integer,List<Integer>>() {
+                    public void accept(Integer k, List<Integer> v) {
+                        for (Integer i : v) {
+                            
+                            if (copy.get(i) == null) 
+                                copy.put(i, new LinkedList<Integer>());
+                          
+                            copy.get(i).add(k);
+                        }
+                    }
+                });           
             return copy;
         }
        
