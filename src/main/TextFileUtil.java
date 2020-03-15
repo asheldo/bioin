@@ -45,6 +45,13 @@ public class TextFileUtil {
             outs);
     }
     
+    public static void writeKmersListPlus(final FileInputs fileInputs,
+                                          final Object ... outs) 
+        throws Exception 
+    {
+        writeKmersListPlus("", fileInputs, outs);
+    }
+    
 	public static void writeKmersListPlus(
         final String delim,
         final FileInputs fileInputs,

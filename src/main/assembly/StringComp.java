@@ -31,7 +31,11 @@ public class StringComp extends Processor
             decomp(fis);
         } 
         else {
-            compose(fis);
+            String out = compose(fis.params);
+          
+            TextFileUtil.writeKmersListPlus(
+                fis.outputFile, 
+                out);
         }
     }
         
@@ -98,19 +102,19 @@ public class StringComp extends Processor
         int n = fis.params.size();
         Random rnd = new Random();
         println("" + n + " @" + checkpoint());
-        List<Integer> euler = new LinkedList<Integer>();
-        IntNodeMap cloner = readAdj(fis);
+        List<String> euler = new LinkedList<String>();
+        IntNodeMap cloner = readAdj(fis.params);
         int pick = rnd.nextInt(cloner.size());
-        Map.Entry<Integer,List<Integer>> start
+        Map.Entry<String,List<String>> start
             = cloner.getEntry(pick);
-        List<Integer> outs = start.getValue();
-        Integer in = start.getKey();
+        List<String> outs = start.getValue();
+        String in = start.getKey();
         long t = t();
         int i = 0;
         try {
-            euler = new LinkedList<Integer>();
-            LinkedList<Integer> stack = 
-                new LinkedList<Integer>();
+            euler = new LinkedList<String>();
+            LinkedList<String> stack = 
+                new LinkedList<String>();
             while (true) {
                 if (outs.isEmpty()) {
                     // adj.remove(in);
@@ -149,7 +153,7 @@ public class StringComp extends Processor
         int n = fis.params.size();
         
         println("" + n + " @" + checkpoint());
-        List<Integer> euler = eulerCycle(fis, isPath);
+        List<String> euler = eulerCycle(fis.params, isPath);
         // Collections.reverse(euler);
         String out = eulerPathOut(euler);
         TextFileUtil.writeKmersListPlus("",
@@ -157,28 +161,28 @@ public class StringComp extends Processor
                                         out);
     }
 
-    static List<Integer> eulerCycle(FileInputs fis,
-                                    final boolean isPath) {
-        List<Integer> euler = new LinkedList<Integer>();
-        IntNodeMap cloner = readAdj(fis);
+    static List<String> eulerCycle(List<String> params,
+                                   final boolean isPath) {
+        List<String> euler = new LinkedList<String>();
+        IntNodeMap cloner = readAdj(params);
         int sz = cloner.size();
         Random rnd = new Random();
-        Integer in;
+        String in;
         
         if (isPath) {
             cloner.start(+1);
             in = cloner.start;  // Map.Entry<Integer,List<Integer>> start = cloner.getEntry(in);
             if (cloner.get(cloner.end) == null) {
-                cloner.put(cloner.end, new LinkedList<Integer>());
+                cloner.put(cloner.end, new LinkedList<String>());
             }
             cloner.get(cloner.end).add(cloner.start);
         } else {
             int pick = rnd.nextInt(cloner.size());
-            Map.Entry<Integer,List<Integer>> start
+            Map.Entry<String,List<String>> start
                 = cloner.getEntry(pick);
             in = start.getKey();
         }
-        List<Integer> outs = cloner.get(in);
+        List<String> outs = cloner.get(in);
         euler.add(in);
         
         int i = 0;
@@ -191,8 +195,8 @@ public class StringComp extends Processor
                 {
                     if (cloner.get(euler.get(ix)).size() > 0)
                     {
-                        LinkedList<Integer> stack = 
-                            new LinkedList<Integer>();
+                        LinkedList<String> stack = 
+                            new LinkedList<String>();
                         stack.addAll(euler.subList(ix, euler.size()));
                         stack.addAll(euler.subList(1, ix));
                         stack.add(euler.get(ix));
@@ -210,7 +214,7 @@ public class StringComp extends Processor
             in = outs.remove(rnd.nextInt(outs.size()));
             euler.add(in);
             outs = cloner.get(in);
-            if ((++i) % 1000 == 0) {
+            if ((++i) % 10000 == 0) {
                 println(in + " = " + outs.toString() + " .. " + euler);
             }
         }
@@ -218,16 +222,16 @@ public class StringComp extends Processor
         return euler;
     }
     
-    static class IntNodeMap extends LinkedHashMap<Integer,List<Integer>> {
+    static class IntNodeMap extends LinkedHashMap<String,List<String>> {
         
-        int start = -1;
-        int end = -1;
+        String start = "";
+        String end = "";
         
-        Map.Entry<Integer,List<Integer>> getEntry(int n) {
-            Iterator<Map.Entry<Integer,List<Integer>>> e = 
+        Map.Entry<String,List<String>> getEntry(int n) {
+            Iterator<Map.Entry<String,List<String>>> e = 
                 entrySet().iterator();
             while (e.hasNext()) {
-                Map.Entry<Integer,List<Integer>> x =
+                Map.Entry<String,List<String>> x =
                     e.next();
                 if (0 == n--) {
                     return x;
@@ -237,13 +241,13 @@ public class StringComp extends Processor
         }
 
         void start(final int outBias) {
-            Iterator<Map.Entry<Integer,List<Integer>>> outs = 
+            Iterator<Map.Entry<String,List<String>>> outs = 
                 entrySet().iterator();
             final IntNodeMap in = invert(); // vs out
-            TreeSet<Integer> ks = new TreeSet<Integer>();
+            TreeSet<String> ks = new TreeSet<String>();
             ks.addAll(in.keySet());
             ks.addAll(keySet());
-            for (Integer k : ks) {
+            for (String k : ks) {
                 int outDiff = diff(k, in);
                 if (outDiff == outBias) {
                     start = k;
@@ -253,7 +257,7 @@ public class StringComp extends Processor
             }
         }
         
-        int diff(int k, IntNodeMap in) {
+        int diff(String k, IntNodeMap in) {
             if (get(k) == null) {
                 return -in.get(k).size();
             }
@@ -263,17 +267,20 @@ public class StringComp extends Processor
             return get(k).size() - in.get(k).size();
         }
         
-        List<Integer> pathFromStart(final List<Integer> euler) {
-            if (end == euler.get(euler.size() - 2) && start == euler.get(0)) {
+        List<String> pathFromStart(final List<String> euler) {
+            if (end.equals(euler.get(euler.size() - 2))
+                    && start.equals(euler.get(0))) {
                 return euler.subList(0, euler.size() - 1);
             }
             int n = -1;
             while (++n < euler.size()) {
-                if (end == euler.get(n) && start == euler.get(n+1)) {
+                if (end.equals(euler.get(n))
+                        && start.equals(euler.get(n+1))) {
                     break;
                 }
             }
-            List<Integer> stack = euler.subList(n + 1, euler.size() - 1);
+            List<String> stack = 
+                euler.subList(n + 1, euler.size() - 1);
             stack.addAll(euler.subList(0, n + 1));
             return stack;
         }
@@ -285,9 +292,9 @@ public class StringComp extends Processor
         
         IntNodeMap copy(final boolean keysOnly) {
             final IntNodeMap copy = new IntNodeMap();
-            forEach(new BiConsumer<Integer,List<Integer>>() {
-                    public void accept(Integer k, List<Integer> v) {
-                        List<Integer> vals = new LinkedList<>();
+            forEach(new BiConsumer<String,List<String>>() {
+                    public void accept(String k, List<String> v) {
+                        List<String> vals = new LinkedList<>();
                         if (!keysOnly) vals.addAll(v);
                         copy.put(k, vals);
                     }
@@ -297,12 +304,11 @@ public class StringComp extends Processor
         
         public IntNodeMap invert() {
             final IntNodeMap copy = copy(true);
-            forEach(new BiConsumer<Integer,List<Integer>>() {
-                    public void accept(Integer k, List<Integer> v) {
-                        for (Integer i : v) {
-                            
+            forEach(new BiConsumer<String,List<String>>() {
+                    public void accept(String k, List<String> v) {
+                        for (String i : v) {
                             if (copy.get(i) == null) 
-                                copy.put(i, new LinkedList<Integer>());
+                                copy.put(i, new LinkedList<String>());
                           
                             copy.get(i).add(k);
                         }
@@ -313,13 +319,13 @@ public class StringComp extends Processor
        
     }
     
-    private static IntNodeMap readAdj(FileInputs fis)
+    private static IntNodeMap readAdj(List<String> params)
     {
         IntNodeMap map = new IntNodeMap<>();
-        for (String adj : fis.params) {
+        for (String adj : params) {
             String [] l = adj.split(" -> ");
             String [] rs = l[1].split(",");
-            map.put(toInt(l[0]), toInt(rs));
+            map.put(l[0], new LinkedList<String>(Arrays.asList(rs))); //toInt(l[0]), toInt(rs));
         }
         return map;
     }
@@ -340,18 +346,11 @@ public class StringComp extends Processor
             d.kmers);
     }
     
-    static void compose(FileInputs fis) throws Exception {
-        // int k = Integer.parseInt(fis.params.get(0));
-        Integer L = fis.params.size();
-        println(L.toString());
-        List<String> kmers = fis.params; //.subList(1, L);
+    static String compose(List<String> kmers) throws Exception {
         StringComp composer =
             new StringComp(convert(kmers));
         char [] text = composer.join(composer.reads);
-        println(new String(text));
-        TextFileUtil.writeKmersListPlus(
-            fis.outputFile, 
-            text);
+        return new String(text);
     }
 
     static void adjacency(FileInputs fis) throws Exception {
@@ -368,17 +367,17 @@ public class StringComp extends Processor
             out);
     }
 
-    static String eulerPathOut(List<Integer> graph) {
+    static String eulerPathOut(List<String> graph) {
         print("t=%d\n", checkpoint());
         StringBuilder out = new StringBuilder();
-        for (Integer n : graph) {
+        for (String n : graph) {
             if (out.length() > 0) {
                 out.append("->");
             }
             out.append(n);
         }
         print("o-t=%d\n", checkpoint());
-        if (out.length() < 500) {
+        if (out.length() < 2000) {
             println(out.toString());
         }
         return out.toString();
@@ -493,12 +492,12 @@ public class StringComp extends Processor
         
         int n = 0;
         while (n < k) {
-            println("" + new String(kmers[0]) + " " + n + " " + k);
+            // println("" + new String(kmers[0]) + " " + n + " " + k);
             joined[n] = kmers[0][n];
             ++n;
         }
         for (int i = 1; i < ks; ++i) {
-            println("" + new String(kmers[i]) + " " + i + " " + ks);
+            // println("" + new String(kmers[i]) + " " + i + " " + ks);
             joined[n++] = kmers[i][k-1];
         }
         return joined;
